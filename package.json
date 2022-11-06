@@ -1,6 +1,7 @@
 {
 	"name": "skint",
 	"version": "0.0.1",
+	"bin": "./cli/index.js",
 	"scripts": {
 		"dev": "vite dev",
 		"build": "svelte-kit sync && svelte-package",
