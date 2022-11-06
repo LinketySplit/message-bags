@@ -1,4 +1,3 @@
-
 const PUBLIC_I18N_SRC_FOLDER_NAME = 'PUBLIC_I18N_SRC_FOLDER_NAME';
 const PUBLIC_I18N_DEFAULT_LOCALE = 'PUBLIC_I18N_DEFAULT_LOCALE';
 const PUBLIC_I18N_SUPPORTED_LOCALES = 'PUBLIC_I18N_SUPPORTED_LOCALES';
@@ -7,7 +6,6 @@ export type I18NEnv = {
 	defaultLocale: string;
 	supportedLocales: string[];
 };
-
 
 export const validateEnvVariables = (env: Record<string, string>): I18NEnv => {
 	const i18nSrcFolder = env[PUBLIC_I18N_SRC_FOLDER_NAME];
@@ -31,14 +29,13 @@ export const validateEnvVariables = (env: Record<string, string>): I18NEnv => {
 			.map((s) => s.trim())
 			.filter((s) => s.length === 0);
 	}
-  
 
 	return { defaultLocale, i18nSrcFolder, supportedLocales };
 };
 
-export const parseMessageId = (id: string): {messageBagId: string, messageKey: string} => {
-  const parts = id.split('/');
-  const messageKey = parts.pop() || '';
-  const messageBagId = parts.join('/');
-  return {messageBagId, messageKey}
-}
+export const parseMessageId = (id: string): { messageBagId: string; messageKey: string } => {
+	const parts = id.split('/');
+	const messageKey = parts.pop() || '';
+	const messageBagId = parts.join('/');
+	return { messageBagId, messageKey };
+};

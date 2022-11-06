@@ -5,14 +5,17 @@ type TranslatedMessageBag = {
 	[messageId: string]: string | ((data: Record<string, unknown>) => string);
 };
 
-export function t(messageId: string, def: string): (locale?: string) => Promise<string>;
+export function skint(messageId: string, def: string): (locale?: string) => Promise<string>;
 
-export function t<DataType extends Record<string, unknown>>(
+export function skint<DataType extends Record<string, unknown>>(
 	messageId: string,
 	def: (data: DataType) => string
 ): (data: DataType, locale?: string) => Promise<string>;
 
-export function t(messageId: string, def: string | ((data: Record<string, unknown>) => string)) {
+export function skint(
+	messageId: string,
+	def: string | ((data: Record<string, unknown>) => string)
+) {
 	const { messageKey, messageBagId } = parseMessageId(messageId);
 	if (typeof def === 'function') {
 		const fn = async (data: Record<string, unknown>, locale?: string): Promise<string> => {
@@ -38,8 +41,8 @@ export function t(messageId: string, def: string | ((data: Record<string, unknow
 	};
 	return fn;
 }
-const test = t('test.string', 'hollo');
-const test2 = t('test.fn', (data: { name: string }) => `Hello, ${data.name}`);
+const test = skint('test.string', 'hollo');
+const test2 = skint('test.fn', (data: { name: string }) => `Hello, ${data.name}`);
 
 class MessageLoader {
 	private env: I18NEnv;
