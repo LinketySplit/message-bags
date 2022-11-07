@@ -10,7 +10,7 @@ import glob from 'tiny-glob';
 import { SourceMapConsumer } from 'source-map';
 import { parse as parseComment } from 'comment-parser';
 import { bold, cyan, gray, green, red } from 'kleur/colors';
-
+const functionName = 'ski18nT';
 let talky = false;
 const log = (s: string, talkative: boolean) => {
   if (!talkative && !talky) {
@@ -89,7 +89,7 @@ type SkintCallResult = {
   column: number;
   messageId: string;
   type: 'function' | 'string';
-  // description: string;
+  description: string;
   fnDataType: string | null;
   fnBody: string | null;
   strBody: string | null;
@@ -139,7 +139,7 @@ const parseSourceFile = async (
   const callExpressions: ts.CallExpression[] = tsquery(
     ast,
     'CallExpression'
-  ).filter((n) => n.getChildAt(0).getText() === 'skint') as ts.CallExpression[];
+  ).filter((n) => n.getChildAt(0).getText() === functionName) as ts.CallExpression[];
   if (callExpressions.length === 0) {
     return null;
   }
@@ -179,10 +179,17 @@ const parseCallExpression = (
     ast,
     sourceMapConsumer
   );
+  const description = parseCallExpressionDescription(
+    callExpression,
+    sourceFilePath,
+    ast,
+    sourceMapConsumer
+  )
   const result: SkintCallResult = {
     sourceFilePath,
     ...callResultPos,
     messageId,
+    description,
     ...parseSkintCallArgument(
       callExpression,
       sourceFilePath,
@@ -330,6 +337,17 @@ const parseSkintCallArgument = (
     strBody
   };
 };
+
+const parseCallExpressionDescription = (
+  callExpression: ts.CallExpression,
+  sourceFilePath: string,
+  ast: ts.SourceFile,
+  sourceMapConsumer: SourceMapConsumer | null = null
+): string => {
+  const commentResult = parseComment(callExpression.getFullText())[0];
+  console.log(commentResult);
+  return ''
+}
 
 export const lint = async () => {
   const fileResults = await parseSourceFiles();

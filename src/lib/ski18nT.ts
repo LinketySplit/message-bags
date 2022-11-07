@@ -10,12 +10,12 @@ type FirstArg<T> = T extends (
 
 
 
-export function t(
+export function ski18nT(
   messageId: string,
   definition: string
 ): (locale?: string) => Promise<string>;
 
-export function t<
+export function ski18nT<
   DefType extends (data: DataType) => string,
   DataType = FirstArg<DefType>
 >(
@@ -23,7 +23,7 @@ export function t<
   definition: DefType
 ): (data: DataType, locale?: string) => Promise<string>;
 
-export function t(messageId: string, definition: unknown) {
+export function ski18nT(messageId: string, definition: unknown) {
   const { messageKey, messageBagId } = parseMessageId(messageId);
   if (typeof definition === 'string') {
     const fn = async (locale?: string): Promise<string> => {

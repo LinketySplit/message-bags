@@ -1,32 +1,32 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  import { t } from '$lib';
+  import { ski18nT } from '$lib';
 
   let locale: string;
 
   const options = [
     {
       locale: 'en-US',
-      label: t('locale-picker/enUsLabel', 'English (US)')
+      label: ski18nT('locale-picker/enUsLabel', 'English (US)')
     },
     {
       locale: 'en-GB',
-      label: t('locale-picker/enGbLabel', 'English (GB)')
+      label: ski18nT('locale-picker/enGbLabel', 'English (GB)')
     },
     {
       locale: 'es-SPANGLISH',
-      label: t('locale-picker/enSpanglishLabel', 'Spanglish')
+      label: ski18nT('locale-picker/enSpanglishLabel', 'Spanglish')
     },
     {
       locale: 'fr-FRANGLAIS',
-      label: t('locale-picker/enFranglaisLabel', 'Franglais')
+      label: ski18nT('locale-picker/enFranglaisLabel', 'Franglais')
     }
   ];
 
   $: locale = $page.data.locale || 'en-US';
   $: currentLocaleOption = options.find((o) => o.locale === locale);
   $: setLocaleHref = `/set-locale?redirect=${$page.url.pathname}&locale=`;
-  $: localeCurrentlyIs = t(
+  $: localeCurrentlyIs = ski18nT(
     'locale-picker/localeCurrentlyIs',
     (data: { locale: string }) => `(currently ${data.locale})`
   );
@@ -35,7 +35,7 @@
 <div>
   <details>
     <summary>
-      {#await t('locale-picker/chooseLocaleLabel', 'Choose locale')(locale)}
+      {#await ski18nT('locale-picker/chooseLocaleLabel', 'Choose locale')(locale)}
         Choose locale
       {:then label}
         {label}
