@@ -6,13 +6,11 @@
   const data = { name: 'SKi18nT' };
   const messages = {
     nameInputLabel: t('hello-name/nameInputLabel', 'Enter your name'),
-    result: t( 'hello-name/result', (data: {name: string}) => {
-        const trimmed =
-           data.name.trim().length > 0
-            ? data.name.trim()
-            : 'Anonymous';
-        return `Hello, ${trimmed}`;
-      })
+    result: t('hello-name/result', (data: { name: string }) => {
+      const trimmed =
+        data.name.trim().length > 0 ? data.name.trim() : 'Anonymous';
+      return `Hello, ${trimmed}`;
+    })
   };
 </script>
 

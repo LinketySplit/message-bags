@@ -1,7 +1,7 @@
 <script lang="ts">
   type Prop<D> = {
-    data: D,
-  }
+    data: D;
+  };
   export let locale: string;
   export let data: any = undefined;
   export let t: (...args: any[]) => Promise<string>;
@@ -19,5 +19,4 @@
   {:then message}
     {message}
   {/await}
-
 {/if}

@@ -6,36 +6,25 @@ type FirstArg<T> = T extends (
   first: infer FirstArgument,
   ...args: unknown[]
 ) => unknown
-  ? FirstArgument extends undefined
-    ? never
-    : FirstArgument
+  ? FirstArgument
   : never;
-
-// type ShouldBeStr = FirstArg<(data: {name: string}) => number>;
-// type Def = (data: { foo: number }) => string;
-// type DataType = FirstArg<Def>;
 
 type TranslatedMessageBag = {
   [messageId: string]: string | ((data: Record<string, unknown>) => string);
 };
-// export type MessagePromise<D> = D extends Record<string, unknown>
-//   ? (locale: string, data: D) => Promise<string>
-//   : (locale: string) => Promise<string>;
 
 export function translateFn(
   messageId: string,
   definition: string
 ): (locale: string) => Promise<string>;
 export function translateFn<
-  DefType extends (data: DataType) => string, DataType = FirstArg<DefType>
+  DefType extends (data: DataType) => string,
+  DataType = FirstArg<DefType>
 >(
   messageId: string,
   definition: (data: DataType) => string
 ): (data: DataType, locale: string) => Promise<string>;
-export function translateFn(
-  messageId: string,
-  definition: unknown
-) {
+export function translateFn(messageId: string, definition: unknown) {
   const { messageKey, messageBagId } = parseMessageId(messageId);
   if (typeof definition === 'string') {
     const fn = async (locale: string): Promise<string> => {
@@ -51,10 +40,7 @@ export function translateFn(
     };
     return fn;
   }
-  const fn = async (
-    data: unknown,
-    locale: string
-  ): Promise<string> => {
+  const fn = async (data: unknown, locale: string): Promise<string> => {
     const bag = await MessageLoader.inst().loadMessageBag(messageBagId, locale);
     const resolved = (
       bag && typeof bag[messageKey] === 'function'

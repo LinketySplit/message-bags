@@ -1,7 +1,7 @@
 <script lang="ts">
   import { t } from '$lib';
   import type { PageData } from './$types';
-    import HelloName from './HelloName.svelte';
+  import HelloName from './HelloName.svelte';
   export let data: PageData;
   $: locale = data.locale;
 </script>
@@ -18,5 +18,5 @@
 </p>
 
 <div>
-  <HelloName/>
+  <HelloName />
 </div>

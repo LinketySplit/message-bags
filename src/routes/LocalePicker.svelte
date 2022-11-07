@@ -26,7 +26,10 @@
   $: locale = $page.data.locale || 'en-US';
   $: currentLocaleOption = options.find((o) => o.locale === locale);
   $: setLocaleHref = `/set-locale?redirect=${$page.url.pathname}&locale=`;
-  $: localeCurrentlyIs = t('locale-picker/localeCurrentlyIs', (data: {locale: string}) => `(currently ${data.locale})`)
+  $: localeCurrentlyIs = t(
+    'locale-picker/localeCurrentlyIs',
+    (data: { locale: string }) => `(currently ${data.locale})`
+  );
 </script>
 
 <div>
@@ -37,8 +40,7 @@
       {:then label}
         {label}
       {/await}
-      {#await localeCurrentlyIs({locale}, locale)}
-        
+      {#await localeCurrentlyIs({ locale }, locale)}
         ...
       {:then message}
         {message}

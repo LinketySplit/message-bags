@@ -1,4 +1,4 @@
-import { t } from "./runtime";
+import { t } from './runtime';
 
 const foo = t(
   'hello-name/result',
@@ -7,9 +7,10 @@ const foo = t(
    * @param {{name: string}} data
    */
   (data) => {
-    
     const trimmed =
-      typeof data.name === 'string' && data.name.trim().length > 0 ? data.name.trim() : 'Anonymous';
+      typeof data.name === 'string' && data.name.trim().length > 0
+        ? data.name.trim()
+        : 'Anonymous';
     return `Hello, ${trimmed}`;
   }
-)
+);

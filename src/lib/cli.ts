@@ -184,11 +184,11 @@ const parseCallExpression = (
     ...callResultPos,
     messageId,
     ...parseSkintCallArgument(
-			callExpression,
-			sourceFilePath,
-			ast,
-			sourceMapConsumer
-		)
+      callExpression,
+      sourceFilePath,
+      ast,
+      sourceMapConsumer
+    )
   };
   return result;
 };
@@ -323,7 +323,7 @@ const parseSkintCallArgument = (
   } else {
     strBody = valueNode.text;
   }
-	return {
+  return {
     type,
     fnBody,
     fnDataType,
