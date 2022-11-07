@@ -1,3 +1,7 @@
+export type TranslatedMessageBag = {
+  [messageId: string]: string | ((data: Record<string, unknown>) => string);
+};
+
 export const parseMessageId = (
   id: string
 ): { messageBagId: string; messageKey: string } => {
