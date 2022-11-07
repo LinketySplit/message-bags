@@ -1,6 +1,4 @@
-import * as publicEnv from '$env/static/public';
-import { validateEnvVariables, parseMessageId, type I18NEnv } from './shared';
-// const i18nPath = 'src/i18n';
+import { parseMessageId } from './shared';
 
 type FirstArg<T> = T extends (
   first: infer FirstArgument,
@@ -13,25 +11,27 @@ type TranslatedMessageBag = {
   [messageId: string]: string | ((data: Record<string, unknown>) => string);
 };
 
-export function translateFn(
+export function t(
   messageId: string,
   definition: string
-): (locale: string) => Promise<string>;
-export function translateFn<
+): (locale?: string) => Promise<string>;
+
+export function t<
   DefType extends (data: DataType) => string,
   DataType = FirstArg<DefType>
 >(
   messageId: string,
-  definition: (data: DataType) => string
-): (data: DataType, locale: string) => Promise<string>;
-export function translateFn(messageId: string, definition: unknown) {
+  definition: DefType
+): (data: DataType, locale?: string) => Promise<string>;
+
+export function t(messageId: string, definition: unknown) {
   const { messageKey, messageBagId } = parseMessageId(messageId);
   if (typeof definition === 'string') {
-    const fn = async (locale: string): Promise<string> => {
-      const bag = await MessageLoader.inst().loadMessageBag(
-        messageBagId,
-        locale
-      );
+    const fn = async (locale?: string): Promise<string> => {
+      const bag =
+        typeof locale === 'string'
+          ? await MessageLoader.inst().loadMessageBag(messageBagId, locale)
+          : {};
       const resolved =
         bag && typeof bag[messageId] === 'string'
           ? bag[messageId]
@@ -40,8 +40,11 @@ export function translateFn(messageId: string, definition: unknown) {
     };
     return fn;
   }
-  const fn = async (data: unknown, locale: string): Promise<string> => {
-    const bag = await MessageLoader.inst().loadMessageBag(messageBagId, locale);
+  const fn = async (data: unknown, locale?: string): Promise<string> => {
+    const bag =
+      typeof locale === 'string'
+        ? await MessageLoader.inst().loadMessageBag(messageBagId, locale)
+        : {};
     const resolved = (
       bag && typeof bag[messageKey] === 'function'
         ? bag[messageKey]
@@ -52,14 +55,7 @@ export function translateFn(messageId: string, definition: unknown) {
   return fn;
 }
 
-const test1 = translateFn('test.str', 'hhhghg');
-const test2 = translateFn(
-  'test.fn',
-  (data: { foo: string }) => `Hello, ${data.foo}`
-);
-
 class MessageLoader {
-  private env: I18NEnv;
   private moduleLoadFns: Record<string, () => Promise<TranslatedMessageBag>>;
   private loadedMessageBags: Record<string, TranslatedMessageBag> = {};
   private static instance: MessageLoader | null = null;
@@ -70,7 +66,6 @@ class MessageLoader {
     return this.instance;
   }
   private constructor() {
-    this.env = validateEnvVariables(publicEnv);
     this.moduleLoadFns = import.meta.glob('/src/i18n/**/*.ts', {
       import: 'messages'
     }) as Record<string, () => Promise<TranslatedMessageBag>>;
@@ -90,3 +85,8 @@ class MessageLoader {
     return this.loadedMessageBags[bagPath];
   }
 }
+
+const test1 = t('test.str', 'hhhghg');
+const msg1 = await test1();
+const test2 = t('test.fn', (data: { foo: string }) => `Hello, ${data.foo}`);
+const msg = await test2({ foo: 'bar' }, 'en');
