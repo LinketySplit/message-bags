@@ -11,13 +11,7 @@ import { SourceMapConsumer } from 'source-map';
 import { parse as parseComment } from 'comment-parser';
 import { bold, cyan, gray, green, red } from 'kleur/colors';
 const functionName = 'ski18nT';
-let talky = false;
-const log = (s: string, talkative: boolean) => {
-  if (!talkative && !talky) {
-    return;
-  }
-  console.log(s);
-};
+
 
 const getNodePositionInOriginalSource = (
   ast: ts.SourceFile,
@@ -75,44 +69,37 @@ class ParseError implements IParseError {
   }
 }
 type FilesResult = {
-  callResults: SkintCallResult[];
-  errors: IParseError[];
+  callResults: CallResult[];
 };
 type FileResult = {
   sourceFilePath: string;
-  callResults: SkintCallResult[];
-  errors: IParseError[];
+  callResults: CallResult[];
 };
-type SkintCallResult = {
+type CallResult = {
   sourceFilePath: string;
   line: number;
   column: number;
-  messageId: string;
-  type: 'function' | 'string';
-  description: string;
+  messageId: string | null;
+  type: 'function' | 'string' | null;
+  description: string | null;
   fnDataType: string | null;
   fnBody: string | null;
   strBody: string | null;
+  error: IParseError| null;
 };
 
 const parseSourceFiles = async (): Promise<FilesResult> => {
   const result: FilesResult = {
-    callResults: [],
-    errors: []
+    callResults: []
   };
-  const start = Date.now();
   const globPattern = 'src/**/*.{js,svelte,ts}';
-  log(gray(`Parsing source files using pattern ${globPattern}...`), true);
   const files = await glob(globPattern);
-  log(gray(`${files.length} source files found...`), true);
   for (const sourceFilePath of files) {
     const fileResult = await parseSourceFile(sourceFilePath);
     if (fileResult) {
       result.callResults.push(...fileResult.callResults);
-      result.errors.push(...fileResult.errors);
     }
   }
-  log(gray(`Done parsing source files in ${Date.now() - start}ms`), true);
   return result;
 };
 const parseSourceFile = async (
@@ -120,10 +107,8 @@ const parseSourceFile = async (
 ): Promise<FileResult | null> => {
   const result: FileResult = {
     sourceFilePath,
-    callResults: [],
-    errors: []
+    callResults: []
   };
-  log(gray(`Parsing source file  ${sourceFilePath}...`), true);
   const source = await readFile(sourceFilePath, 'utf-8');
   let parsable: string;
   let sourceMapConsumer: SourceMapConsumer | null = null;
@@ -139,26 +124,21 @@ const parseSourceFile = async (
   const callExpressions: ts.CallExpression[] = tsquery(
     ast,
     'CallExpression'
-  ).filter((n) => n.getChildAt(0).getText() === functionName) as ts.CallExpression[];
+  ).filter(
+    (n) => n.getChildAt(0).getText() === functionName
+  ) as ts.CallExpression[];
   if (callExpressions.length === 0) {
     return null;
   }
   for (const callExpression of callExpressions) {
-    try {
-      const callResult = parseCallExpression(
+    result.callResults.push(
+      parseCallExpression(
         callExpression,
         sourceFilePath,
         ast,
         sourceMapConsumer
-      );
-      result.callResults.push(callResult);
-    } catch (error) {
-      if (error instanceof ParseError) {
-        result.errors.push(error);
-      } else {
-        throw error;
-      }
-    }
+      )
+    );
   }
   return result;
 };
@@ -167,40 +147,53 @@ const parseCallExpression = (
   sourceFilePath: string,
   ast: ts.SourceFile,
   sourceMapConsumer: SourceMapConsumer | null = null
-): SkintCallResult => {
-  const callResultPos = getNodePositionInOriginalSource(
-    ast,
-    callExpression,
-    sourceMapConsumer
-  );
-  const messageId = parseSkintCallExpressionMessageId(
-    callExpression,
+): CallResult => {
+  const result: CallResult = {
     sourceFilePath,
-    ast,
-    sourceMapConsumer
-  );
-  const description = parseCallExpressionDescription(
-    callExpression,
-    sourceFilePath,
-    ast,
-    sourceMapConsumer
-  )
-  const result: SkintCallResult = {
-    sourceFilePath,
-    ...callResultPos,
-    messageId,
-    description,
-    ...parseSkintCallArgument(
+    ...getNodePositionInOriginalSource(ast, callExpression, sourceMapConsumer),
+    messageId: null,
+    type: null,
+    description: null,
+    fnBody: null,
+    fnDataType: null,
+    strBody: null,
+    error: null
+  };
+  try {
+    result.messageId = parseMessageId(
       callExpression,
       sourceFilePath,
       ast,
       sourceMapConsumer
-    )
-  };
-  return result;
+    );
+    result.description = parseCallExpressionDescription(
+      callExpression,
+      sourceFilePath,
+      ast,
+      sourceMapConsumer
+    );
+    const {fnBody, fnDataType, strBody, type} = parseCallArgument(
+      callExpression,
+      sourceFilePath,
+      ast,
+      sourceMapConsumer
+    );
+    result.type = type;
+    result.strBody = strBody;
+    result.fnBody = fnBody;
+    result.fnDataType = fnDataType;
+    return result;
+  } catch (error) {
+    if (error instanceof ParseError) {
+      result.error = error;
+      return result;
+    }
+    throw error;
+  }
+  
 };
 
-const parseSkintCallExpressionMessageId = (
+const parseMessageId = (
   callExpression: ts.CallExpression,
   sourceFilePath: string,
   ast: ts.SourceFile,
@@ -210,7 +203,7 @@ const parseSkintCallExpressionMessageId = (
 
   if (!ts.isStringLiteral(arg)) {
     throw new ParseError(
-      `The first argument to skint (messageId) must be a string.`,
+      `The first argument to ${functionName} (messageId) must be a string.`,
       sourceFilePath,
       callExpression,
       ast,
@@ -257,7 +250,7 @@ const parseSkintCallExpressionMessageId = (
   return messageId;
 };
 
-const parseSkintCallArgument = (
+const parseCallArgument = (
   callExpression: ts.CallExpression,
   sourceFilePath: string,
   ast: ts.SourceFile,
@@ -345,25 +338,41 @@ const parseCallExpressionDescription = (
   sourceMapConsumer: SourceMapConsumer | null = null
 ): string => {
   const commentResult = parseComment(callExpression.getFullText())[0];
-  console.log(commentResult);
-  return ''
-}
+  if (!commentResult) {
+    throw new ParseError(
+      `A comment with the description of the translated string is required.`,
+      sourceFilePath,
+      callExpression,
+      ast,
+      sourceMapConsumer
+    );
+  }
+  return commentResult.source.map((l) => l.source).join('\n');
+};
 
 export const lint = async () => {
-  const fileResults = await parseSourceFiles();
-  console.log(fileResults);
+  const {callResults} = await parseSourceFiles();
+  console.log(gray(`${callResults.length} calls to ${functionName} found.`));
+  callResults.forEach(r => {
+    const fd = `${r.sourceFilePath} [${r.line},${r.column}]`
+    if (r.error) {
+      console.log( red(`✗ ${fd}`), gray(r.error.message));
+    } else {
+      console.log( green(`✓ ${fd}`));
+    }
+  })
 };
 
 export const main = () => {
   const prog = sade('skint');
-  prog.version('1.0.5').option('--talky, -t', 'Verbose output');
 
   prog
     .command('lint')
-    .describe(`Lint the project's translations.`)
+    .describe(
+      `Lint the project's message definitions and corresponding translations.`
+    )
     .example('lint')
     .action(async (options) => {
-      talky = options.talky === true;
       await lint();
     });
   prog.parse(process.argv);
