@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { ski18nT } from '$lib';
-  import Ski18nTranslated from '$lib/Ski18nSki18nTranslated.svelte';
+  import Ski18nTranslated from '$lib/Ski18nTranslated.svelte';
   $: locale = $page.data.locale || 'en-US';
   const data = { name: 'SKi18nT' };
   const messages = {

@@ -1,5 +1,6 @@
-import { BagLoader } from "./bag-loader";
-import { parseMessageId } from "./shared";
+import { writable, type Readable, type Writable } from 'svelte/store';
+import { BagLoader } from './bag-loader';
+import { parseMessageId } from './shared';
 
 type FirstArg<T> = T extends (
   first: infer FirstArgument,
@@ -7,8 +8,6 @@ type FirstArg<T> = T extends (
 ) => unknown
   ? FirstArgument
   : never;
-
-
 
 export function ski18nT(
   messageId: string,
@@ -52,4 +51,49 @@ export function ski18nT(messageId: string, definition: unknown) {
     return resolved(data);
   };
   return fn;
+}
+
+export function ski18nTReadable(
+  messageId: string,
+  definition: string,
+  passed: {locale?: string}
+): Readable<string>;
+
+export function ski18nTReadable<
+  DefType extends (data: DataType) => string,
+  DataType = FirstArg<DefType>
+>(
+  messageId: string,
+  definition: DefType,
+  passed: {locale?: string, data: DataType}
+): Readable<string>;
+
+export function ski18nTReadable(
+  messageId: string,
+  definition: unknown,
+  passed: unknown
+): Readable<string> {
+  const passedData: {locale: string, data: unknown} = {
+    locale: '',
+    data: {},
+    ...(passed || {})
+  }
+  const { messageKey, messageBagId } = parseMessageId(messageId);
+  let result: Writable<string>;
+  if (typeof definition === 'string') {
+    result = writable(definition);
+  } else {
+    result = writable((definition as (data: unknown) => string)(passedData.data));
+  }
+  BagLoader.inst()
+    .loadMessageBag(messageBagId, passedData.locale || '')
+    .then((bag) => {
+      const resolved = bag[messageKey];
+      if (typeof resolved === 'string') {
+        result.set(resolved);
+      } else {
+        result.set((resolved as (data: unknown) => string)(passedData.data));
+      }
+    });
+  return { subscribe: result.subscribe };
 }

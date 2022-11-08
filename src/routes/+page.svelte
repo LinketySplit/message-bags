@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ski18nT } from '$lib';
-  import Ski18nTranslated from '$lib/Ski18nSki18nTranslated.svelte';
+  import Ski18nTranslated from '$lib/Ski18nTranslated.svelte';
   import type { PageData } from './$types';
   import HelloName from './HelloName.svelte';
   export let data: PageData;
