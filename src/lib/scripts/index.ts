@@ -8,10 +8,39 @@ import prettier from 'prettier';
 import { svelte2tsx } from 'svelte2tsx';
 import glob from 'tiny-glob';
 import { SourceMapConsumer } from 'source-map';
-import { parse as parseComment } from 'comment-parser';
-import { bold, cyan, gray, green, red } from 'kleur/colors';
+import { bold, cyan, gray, green, red, dim, underline } from 'kleur/colors';
 const functionName = 'ski18nT';
 
+
+
+const stripComment = (input: string): string => {
+  const start = /^\s*\/\/+|\/\*+|\*[^/]/;
+  const end = /\s*\*+\//;
+  const leadingSpace = /^\s+/
+  return input
+    .split(`\n`)
+    .map((s) => s.replace(start, '').replace(end, ''))
+    .filter((s, i, arr) => {
+      let empty = [...arr.slice(0, i + 1)].map((s) => s.trim().length === 0);
+      if (empty.indexOf(false) === -1) {
+        return false;
+      }
+      empty = [...arr.slice(i)].map((s) => s.trim().length === 0);
+      if (empty.indexOf(false) === -1) {
+        return false;
+      }
+
+      return true;
+    })
+    .map(s => {
+      const lead = leadingSpace.exec(s);
+      if (lead) {
+        console.log(lead.input, lead[0].length)
+      }
+      return s;
+    })
+    .join('\n');
+};
 
 const getNodePositionInOriginalSource = (
   ast: ts.SourceFile,
@@ -70,6 +99,8 @@ class ParseError implements IParseError {
 }
 type FilesResult = {
   callResults: CallResult[];
+  callCount: number;
+  errorCount: number;
 };
 type FileResult = {
   sourceFilePath: string;
@@ -81,18 +112,20 @@ type CallResult = {
   column: number;
   messageId: string | null;
   type: 'function' | 'string' | null;
-  description: string | null;
+  description: string[] | null;
   fnDataType: string | null;
   fnBody: string | null;
   strBody: string | null;
-  error: IParseError| null;
+  error: IParseError | null;
 };
 
 const parseSourceFiles = async (): Promise<FilesResult> => {
   const result: FilesResult = {
-    callResults: []
+    callResults: [],
+    callCount: 0,
+    errorCount: 0
   };
-  const globPattern = 'src/**/*.{js,svelte,ts}';
+  const globPattern = 'src/**/test.{js,svelte,ts}';
   const files = await glob(globPattern);
   for (const sourceFilePath of files) {
     const fileResult = await parseSourceFile(sourceFilePath);
@@ -100,6 +133,24 @@ const parseSourceFiles = async (): Promise<FilesResult> => {
       result.callResults.push(...fileResult.callResults);
     }
   }
+  const uniqueCallsById: CallResult[] = [];
+  result.callResults.forEach((c) => {
+    if (c.error) {
+      return;
+    }
+    const other = uniqueCallsById.find((o) => o.messageId === c.messageId);
+    if (other) {
+      c.error = new ConflictError(
+        `The messageId "${c.messageId}" has already been used in ${other.sourceFilePath} on line ${other.line}. All ids must be unique.`,
+        c.sourceFilePath,
+        c.line,
+        c.column
+      );
+      return;
+    }
+    uniqueCallsById.push(c);
+  });
+
   return result;
 };
 const parseSourceFile = async (
@@ -159,6 +210,7 @@ const parseCallExpression = (
     strBody: null,
     error: null
   };
+
   try {
     result.messageId = parseMessageId(
       callExpression,
@@ -172,7 +224,7 @@ const parseCallExpression = (
       ast,
       sourceMapConsumer
     );
-    const {fnBody, fnDataType, strBody, type} = parseCallArgument(
+    const { fnBody, fnDataType, strBody, type } = parseCallArgument(
       callExpression,
       sourceFilePath,
       ast,
@@ -190,7 +242,6 @@ const parseCallExpression = (
     }
     throw error;
   }
-  
 };
 
 const parseMessageId = (
@@ -336,33 +387,66 @@ const parseCallExpressionDescription = (
   sourceFilePath: string,
   ast: ts.SourceFile,
   sourceMapConsumer: SourceMapConsumer | null = null
-): string => {
-  const commentResult = parseComment(callExpression.getFullText())[0];
-  if (!commentResult) {
-    throw new ParseError(
-      `A comment with the description of the translated string is required.`,
-      sourceFilePath,
-      callExpression,
-      ast,
-      sourceMapConsumer
-    );
+): string[] => {
+
+  const possibleComments = [
+    callExpression
+      .getFullText()
+      .slice(0, callExpression.getLeadingTriviaWidth()),
+    ...callExpression.arguments.map((a) => {
+      return a.getFullText().slice(0, a.getLeadingTriviaWidth());
+    })
+  ]
+    .map((s) => stripComment(s))
+    .filter((s) => s.trim().length > 0);
+  if (possibleComments.length > 0) {
+    return possibleComments[0].split(`\n`);
   }
-  return commentResult.source.map((l) => l.source).join('\n');
+  throw new ParseError(
+    `A comment with the description of the translated string is required.`,
+    sourceFilePath,
+    callExpression,
+    ast,
+    sourceMapConsumer
+  );
 };
+
+
 
 export const lint = async () => {
-  const {callResults} = await parseSourceFiles();
-  console.log(gray(`${callResults.length} calls to ${functionName} found.`));
-  callResults.forEach(r => {
-    const fd = `${r.sourceFilePath} [${r.line},${r.column}]`
+  const start = Date.now();
+  const filesResult = await parseSourceFiles();
+  const { callResults } = filesResult;
+
+  callResults.forEach((r) => {
+    const fd = `${underline(r.sourceFilePath)} [${r.line},${r.column}]`;
     if (r.error) {
-      console.log( red(`✗ ${fd}`), gray(r.error.message));
+      console.log(red(`✗ ${fd}`), gray(r.error.message));
     } else {
-      console.log( green(`✓ ${fd}`));
+      console.log(green(`✓ ${fd}`));
+      if (r.description) {
+        r.description.forEach(l => console.log(dim(`${l}`)))
+      }
     }
-  })
+  });
+  const elapsed = Date.now() - start;
+  console.log(
+    dim(`Linting done in ${bold(elapsed)}ms.`),
+    dim(`${bold(callResults.length)} calls to ${functionName} found.`)
+  );
+  const errors = callResults.filter((c) => c.error !== null);
+  if (errors.length > 0) {
+    console.log(red(`${bold(errors.length)} invalid calls found.`));
+  }
+  return filesResult;
 };
 
+export const build = async (localesToAdd: string[]) => {
+  const filesResult = await lint();
+  if (filesResult.errorCount > 0) {
+    console.log(red('Build cancelled because errors were found.'))
+  }
+};
 export const main = () => {
   const prog = sade('skint');
 
@@ -372,8 +456,20 @@ export const main = () => {
       `Lint the project's message definitions and corresponding translations.`
     )
     .example('lint')
-    .action(async (options) => {
+    .action(async () => {
       await lint();
+    });
+  prog
+    .command('build')
+    .option('--locale -l', 'A locale to add (or ensure exists). You can repeat this flag for multiple locales. Existing locales will always also be included.')
+    .example('build')
+    .example('build -l en_US -l es_MX')
+    .describe(
+      `Build the project's translation files.`
+    )
+    .action(async (options) => {
+      
+      await build(options.locales || []);
     });
   prog.parse(process.argv);
 };

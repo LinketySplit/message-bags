@@ -20,6 +20,9 @@
       }
     )
   };
+  const conflict = ski18nT(
+    /** a conflict */ 
+    'hello-name/result', 'woot')
 </script>
 
 <div>
