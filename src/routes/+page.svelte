@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ski18nT } from '$lib';
-  import Translated from '$lib/Translated.svelte';
+  import Ski18nTranslated from '$lib/Ski18nSki18nTranslated.svelte';
   import type { PageData } from './$types';
   import HelloName from './HelloName.svelte';
   export let data: PageData;
@@ -20,10 +20,10 @@
 </script>
 
 <h1>
-  <Translated t={messages.welcome} {locale} />
+  <Ski18nTranslated t={messages.welcome} {locale} />
 </h1>
 <p>
-  <Translated t={messages.tagline} {locale} />
+  <Ski18nTranslated t={messages.tagline} {locale} />
 </p>
 
 <div>

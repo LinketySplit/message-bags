@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { ski18nT } from '$lib';
-    import Translated from '$lib/Translated.svelte';
+    import Ski18nTranslated from '$lib/Ski18nSki18nTranslated.svelte';
 
   let locale: string;
 
@@ -70,9 +70,9 @@
 <div>
   <details>
     <summary>
-      <Translated t={label} {locale}></Translated>
+      <Ski18nTranslated t={label} {locale}></Ski18nTranslated>
 
-      <Translated t={localeCurrentlyIs} {locale} data={{locale}}></Translated>
+      <Ski18nTranslated t={localeCurrentlyIs} {locale} data={{locale}}></Ski18nTranslated>
     </summary>
     <div>
       {#each options as opt (opt.locale)}

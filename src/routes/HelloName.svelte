@@ -1,7 +1,7 @@
 <script lang="ts">
   import { page } from '$app/stores';
   import { ski18nT } from '$lib';
-  import Translated from '$lib/Translated.svelte';
+  import Ski18nTranslated from '$lib/Ski18nSki18nTranslated.svelte';
   $: locale = $page.data.locale || 'en-US';
   const data = { name: 'SKi18nT' };
   const messages = {
@@ -27,11 +27,11 @@
 
 <div>
   <label for="hello-name-input">
-    <Translated {locale} t={messages.nameInputLabel} />
+    <Ski18nTranslated {locale} t={messages.nameInputLabel} />
   </label>
   <input id="hello-name-input" type="text" bind:value={data.name} />
 </div>
 
 <p>
-  <Translated {locale} t={messages.result} {data} />
+  <Ski18nTranslated {locale} t={messages.result} {data} />
 </p>
