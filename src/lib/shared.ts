@@ -10,3 +10,5 @@ export const parseMessageId = (
   const messageBagId = parts.join('/');
   return { messageBagId, messageKey };
 };
+
+export const PATH_TO_I18N = 'src/i18n';

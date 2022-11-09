@@ -22,8 +22,56 @@ export function ski18nT<
   definition: DefType
 ): (data: DataType, locale?: string) => Promise<string>;
 
-export function ski18nT(messageId: string, definition: unknown) {
+export function ski18nT(
+  messageId: string,
+  definition: string,
+  asReadable: { locale: string }
+): Readable<string>;
+
+export function ski18nT<
+  DefType extends (data: DataType) => string,
+  DataType = FirstArg<DefType>
+>(
+  messageId: string,
+  definition: DefType,
+  asReadable: { locale: string; data: DataType }
+): Readable<string>;
+
+export function ski18nT(
+  messageId: string,
+  definition: unknown,
+  asReadable?: unknown
+) {
   const { messageKey, messageBagId } = parseMessageId(messageId);
+  if (asReadable) {
+    const passedData: { locale: string; data: unknown } = {
+      locale: '',
+      data: {},
+      ...(asReadable || {})
+    };
+    const { messageKey, messageBagId } = parseMessageId(messageId);
+    let result: Writable<string>;
+    if (typeof definition === 'string') {
+      result = writable(definition);
+    } else {
+      result = writable(
+        (definition as (data: unknown) => string)(passedData.data)
+      );
+    }
+    BagLoader.inst()
+      .loadMessageBag(messageBagId, passedData.locale || '')
+      .then((bag) => {
+        const resolved = bag[messageKey];
+        if (typeof resolved === 'string') {
+          result.set(resolved);
+          return;
+        }
+        if (typeof resolved === 'function') {
+          result.set((resolved as (data: unknown) => string)(passedData.data));
+        }
+      });
+    return { subscribe: result.subscribe };
+  }
   if (typeof definition === 'string') {
     const fn = async (locale?: string): Promise<string> => {
       const bag =
@@ -51,49 +99,4 @@ export function ski18nT(messageId: string, definition: unknown) {
     return resolved(data);
   };
   return fn;
-}
-
-export function ski18nTReadable(
-  messageId: string,
-  definition: string,
-  passed: {locale?: string}
-): Readable<string>;
-
-export function ski18nTReadable<
-  DefType extends (data: DataType) => string,
-  DataType = FirstArg<DefType>
->(
-  messageId: string,
-  definition: DefType,
-  passed: {locale?: string, data: DataType}
-): Readable<string>;
-
-export function ski18nTReadable(
-  messageId: string,
-  definition: unknown,
-  passed: unknown
-): Readable<string> {
-  const passedData: {locale: string, data: unknown} = {
-    locale: '',
-    data: {},
-    ...(passed || {})
-  }
-  const { messageKey, messageBagId } = parseMessageId(messageId);
-  let result: Writable<string>;
-  if (typeof definition === 'string') {
-    result = writable(definition);
-  } else {
-    result = writable((definition as (data: unknown) => string)(passedData.data));
-  }
-  BagLoader.inst()
-    .loadMessageBag(messageBagId, passedData.locale || '')
-    .then((bag) => {
-      const resolved = bag[messageKey];
-      if (typeof resolved === 'string') {
-        result.set(resolved);
-      } else {
-        result.set((resolved as (data: unknown) => string)(passedData.data));
-      }
-    });
-  return { subscribe: result.subscribe };
 }

@@ -1,4 +1,4 @@
-import type { TranslatedMessageBag } from "./shared";
+import { PATH_TO_I18N, type TranslatedMessageBag } from "./shared";
 
 
 export class BagLoader {
@@ -20,7 +20,7 @@ export class BagLoader {
     messageBagId: string,
     locale: string
   ): Promise<TranslatedMessageBag> {
-    const bagPath = `src/i18n/${messageBagId}/${locale}.ts`;
+    const bagPath = `${PATH_TO_I18N}/${messageBagId}/${locale}.ts`;
     if (!this.loadedMessageBags[bagPath]) {
       if (!this.moduleLoadFns[bagPath]) {
         this.loadedMessageBags[bagPath] = {};
