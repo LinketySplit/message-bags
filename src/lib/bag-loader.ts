@@ -20,7 +20,8 @@ export class BagLoader {
     messageBagId: string,
     locale: string
   ): Promise<TranslatedMessageBag> {
-    const bagPath = `${PATH_TO_I18N}/${messageBagId}/${locale}.ts`;
+    const bagPath = `/src/i18n/${messageBagId}/${locale}.ts`;
+    console.log(bagPath, this.moduleLoadFns[bagPath] !== undefined)
     if (!this.loadedMessageBags[bagPath]) {
       if (!this.moduleLoadFns[bagPath]) {
         this.loadedMessageBags[bagPath] = {};
