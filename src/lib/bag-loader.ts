@@ -21,7 +21,6 @@ export class BagLoader {
     locale: string
   ): Promise<TranslatedMessageBag> {
     const bagPath = `/src/i18n/${messageBagId}/${locale}.ts`;
-    console.log(bagPath, this.moduleLoadFns[bagPath] !== undefined)
     if (!this.loadedMessageBags[bagPath]) {
       if (!this.moduleLoadFns[bagPath]) {
         this.loadedMessageBags[bagPath] = {};
