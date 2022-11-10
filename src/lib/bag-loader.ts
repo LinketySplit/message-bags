@@ -1,4 +1,4 @@
-import { PATH_TO_I18N, type TranslatedMessageBag } from "./shared";
+import type { TranslatedMessageBag } from "./shared";
 
 
 export class BagLoader {
