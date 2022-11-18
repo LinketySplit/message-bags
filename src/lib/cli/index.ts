@@ -27,7 +27,7 @@ export const main = () => {
       const ensuredLocales = options.locale || [];
       const project = getTsProject();
       console.log(dim('Parsing call expressions...'));
-      const { parsedCallExpressions, parsedMessageBags, valid } =
+      const { parsedCallExpressions, valid } =
         parseCallExpressions(project);
       logParsedCallExpressions(parsedCallExpressions);
       if (!valid) {

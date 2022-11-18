@@ -9,13 +9,11 @@ import {
   type PropertyAssignment,
   type StringLiteral
 } from 'ts-morph';
-import { Md5 } from 'ts-md5';
-import { LintError, NodeDetails } from './classes.js';
+import { LintError } from './classes.js';
 import { getStrippedNodeComment } from './utils.js';
 import type {
   ParseCallExpressionsResult,
   ParsedCallExpression,
-  ParsedMessageBag,
   MessageBagProp,
   MapProp,
   FunctionMessageDefinition,
@@ -120,83 +118,12 @@ export const parseCallExpressions = (
     return {
       valid: false,
       parsedCallExpressions,
-      parsedMessageBags: []
+      
     };
   }
-  console.log(parsedCallExpressions.map((c) => c.messageBagId));
-  const messageBagIds = Array.from(
-    new Set([...parsedCallExpressions.map((c) => c.messageBagId)])
-  );
-  messageBagIds.forEach((messageBagId) => {
-    const callsWithId = parsedCallExpressions.filter(
-      (c) => c.messageBagId === messageBagId
-    );
-    for (let i = 0; i < callsWithId.length; i++) {
-      if (callsWithId[i].error) {
-        continue;
-      }
-      const firstProps = callsWithId[i].properties;
-      for (let j = i + 1; j < callsWithId.length; j++) {
-        if (callsWithId[j].error) {
-          continue;
-        }
-        const secondProps = callsWithId[j].properties;
-        for (const secondProp of secondProps) {
-          const firstConflict = firstProps.find(
-            (firstProp) => firstProp.objectPath === secondProp.objectPath
-          );
-          if (firstConflict) {
-            const firstDetails = new NodeDetails(
-              firstConflict.propertyAssignment
-            );
-            callsWithId[j].error = new LintError(
-              `Duplicate property at ${secondProp.objectPath}. ` +
-                `Previously defined in ${firstDetails.shortFileName} ${firstDetails.posString}`,
-              secondProp.propertyAssignment
-            );
-          }
-        }
-      }
-    }
-  });
-  if (parsedCallExpressions.find((c) => c.error !== null)) {
-    return {
-      valid: false,
-      parsedCallExpressions,
-      parsedMessageBags: []
-    };
-  }
-  const parsedMessageBags: ParsedMessageBag[] = messageBagIds.map(
-    (messageBagId) => {
-      const callsWithId = parsedCallExpressions.filter(
-        (c) => c.messageBagId === messageBagId
-      );
-      const expressions = callsWithId.map((c) => c.callExpression).sort((a, b) => {
-        const afp = a.getSourceFile().getFilePath();
-        const bfp = b.getSourceFile().getFilePath();
-        if (afp === bfp) {
-          return a.getPos() - b.getPos();
-        }
-        return afp > bfp ? 1 : -1
-
-      });
-      const combined: string = expressions.map(e => e.getFullText()).reduce((acc, s) => acc + s, '');
-      const versionHash = Md5.hashStr(combined);
-      const bag: ParsedMessageBag = {
-        versionHash,
-        messageBagId,
-        callExpressions: callsWithId.map((c) => c.callExpression),
-        properties: callsWithId.map((c) => c.properties).flat(),
-
-      };
-      return bag;
-    }
-  );
-
   return {
     valid: true,
-    parsedCallExpressions,
-    parsedMessageBags
+    parsedCallExpressions
   };
 };
 

@@ -29,16 +29,10 @@ export type ParsedCallExpression = {
   properties: MessageBagProp[];
   error: LintError | null;
 };
-export type ParsedMessageBag = {
-  versionHash: string;
-  callExpressions: CallExpression[];
-  messageBagId: string;
-  properties: MessageBagProp[];
-};
+
 export type ParseCallExpressionsResult = {
   valid: boolean;
   parsedCallExpressions: ParsedCallExpression[];
-  parsedMessageBags: ParsedMessageBag[];
 };
 
 export type ParseI18NResult = {
