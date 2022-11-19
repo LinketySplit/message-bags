@@ -23,16 +23,17 @@ export type MapProp = MessageBagProp<ObjectLiteralExpression> & {
 export type StringMessageDefinition = MessageBagProp<StringLiteral>;
 export type FunctionMessageDefinition = MessageBagProp<ArrowFunction>;
 
-export type ParsedCallExpression = {
+export type ParsedMessageBag = {
   callExpression: CallExpression;
   messageBagId: string;
   properties: MessageBagProp[];
+  versionHash: string;
   error: LintError | null;
 };
 
-export type ParseCallExpressionsResult = {
+export type ParseMessageBagsResult = {
   valid: boolean;
-  parsedCallExpressions: ParsedCallExpression[];
+  messageBags: ParsedMessageBag[];
 };
 
 export type ParseI18NResult = {

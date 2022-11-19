@@ -9,22 +9,24 @@ import {
   type PropertyAssignment,
   type StringLiteral
 } from 'ts-morph';
-import { LintError } from './classes.js';
+import {Md5} from 'ts-md5'
+import { LintError, NodeDetails } from './classes.js';
 import { getStrippedNodeComment } from './utils.js';
 import type {
-  ParseCallExpressionsResult,
-  ParsedCallExpression,
+  ParseMessageBagsResult,
+  ParsedMessageBag,
   MessageBagProp,
   MapProp,
   FunctionMessageDefinition,
   StringMessageDefinition
 } from './types.js';
 import { PATH_TO_I18N } from './constants.js';
+import { bold } from './kleur.js';
 
-export const parseCallExpressions = (
+export const parseMessageBags = (
   project: Project
-): ParseCallExpressionsResult => {
-  const parsedCallExpressions: ParsedCallExpression[] = project
+): ParseMessageBagsResult => {
+  const messageBags: ParsedMessageBag[] = project
     .getSourceFiles('src/**/*.ts')
     .filter((f) => {
       return !f.getFilePath().startsWith(process.cwd() + `/${PATH_TO_I18N}`);
@@ -62,8 +64,9 @@ export const parseCallExpressions = (
     })
     .flat()
     .map((callExpression) => {
-      const result: ParsedCallExpression = {
+      const result: ParsedMessageBag = {
         callExpression,
+        versionHash: Md5.hashStr(callExpression.getFullText()),
         messageBagId: '',
         properties: [],
         error: null
@@ -85,7 +88,9 @@ export const parseCallExpressions = (
         for (const segment of segments) {
           if (!rx.test(segment)) {
             throw new LintError(
-              `Invalid path segment "${segment}" in "${result.messageBagId}". ` +
+              `Invalid path segment "${bold(segment)}" in "${bold(
+                result.messageBagId
+              )}". ` +
                 `Each path segment in messageBagId must be at least one character long ` +
                 `and can only include letters, numbers, hyphens and underscores.`,
               idArg
@@ -104,7 +109,6 @@ export const parseCallExpressions = (
         result.properties = (bagArg as ObjectLiteralExpression)
           .getProperties()
           .map((el) => parseMessageBagProperty(el, ''));
-        
       } catch (error) {
         if (error instanceof LintError) {
           result.error = error;
@@ -114,22 +118,47 @@ export const parseCallExpressions = (
       }
       return result;
     });
-  if (parsedCallExpressions.find((c) => c.error !== null)) {
+  if (messageBags.find((c) => c.error !== null)) {
     return {
       valid: false,
-      parsedCallExpressions,
-      
+      messageBags
     };
   }
+  const ids = Array.from(
+    new Set(messageBags.map((c) => c.messageBagId))
+  );
+  ids.forEach((id) => {
+    const callsWithId = messageBags.filter(
+      (c) => c.messageBagId === id
+    );
+    for (let i = 0; i < callsWithId.length; i++) {
+      const callI = callsWithId[i];
+      for (let j = i + 1; j < callsWithId.length; j++) {
+        const callJ = callsWithId[j];
+        if (callI.messageBagId === callJ.messageBagId) {
+          const { shortFileName, posString } = new NodeDetails(
+            callI.callExpression
+          );
+          callJ.error = new LintError(
+            `Message bag id "${bold(
+              id
+            )}" already defined in ${shortFileName} ${posString}. Message bag ids must be unique across a project.`,
+            callJ.callExpression
+          );
+        }
+      }
+    }
+  });
+  
   return {
-    valid: true,
-    parsedCallExpressions
+    valid: messageBags.filter((c) => c.error !== null).length === 0,
+    messageBags
   };
 };
 
 const parseMessageBagProperty = (
   el: ObjectLiteralElementLike,
-  parentPath: string,
+  parentPath: string
 ): MessageBagProp => {
   if (el.getKind() !== SyntaxKind.PropertyAssignment) {
     throw new LintError(
@@ -147,10 +176,10 @@ const parseMessageBagProperty = (
     );
   }
   const key = id.getText();
-  const objectPath = getObjectPath(parentPath, key)
+  const objectPath = getObjectPath(parentPath, key);
   const initializer = (el as PropertyAssignment).getInitializer();
   if (!initializer) {
-    throw new LintError(`Missing property value for ${objectPath}. `, id);
+    throw new LintError(`Missing property value for ${bold(objectPath)}. `, id);
   }
   switch (initializer.getKind()) {
     case SyntaxKind.ObjectLiteralExpression:
@@ -176,7 +205,11 @@ const parseMessageBagProperty = (
       );
     default:
       throw new LintError(
-        `The property at ${objectPath}  must be an arrow function, a string literal or a map. Provided: ${initializer.getType().getText()}`,
+        `The property at ${bold(
+          objectPath
+        )}  must be an arrow function, a string literal or a map. Provided: ${initializer
+          .getType()
+          .getText()}`,
         initializer
       );
   }
@@ -188,7 +221,7 @@ const parseMessageBagMap = (
   parentPath: string,
   key: string
 ): MapProp => {
-  const objectPath = getObjectPath(parentPath, key)
+  const objectPath = getObjectPath(parentPath, key);
   const properties = objectLiteral
     .getProperties()
     .map((el) => parseMessageBagProperty(el, objectPath));
@@ -208,38 +241,31 @@ const parseMessageFunctionDefinitionProperty = (
   parentPath: string,
   key: string
 ): FunctionMessageDefinition => {
-  const objectPath = getObjectPath(parentPath, key)
+  const objectPath = getObjectPath(parentPath, key);
   const comment = getStrippedNodeComment(propertyAssignment);
   if (!arrowFunction.getReturnType().isString()) {
     throw new LintError(
-      `The function definition for ${objectPath} must return a string. ` +
+      `The function definition for ${bold(objectPath)} must return a string. ` +
         `Current return type: ${arrowFunction.getReturnType().getText()}`,
       arrowFunction
     );
   }
   const params = arrowFunction.getParameters();
-  /**
-   * Getting rid of this constraint. It may be useful to
-   * wrap long messages in a function, regardless of paramaters
-   */
-  // if (params.length === 0) {
-  //   throw new LintError(
-  //     `The function definition for ${objectPath} has no parameters. Use a string definition instead.`,
-  //     arrowFunction
-  //   );
-  // }
+
   params.forEach((a) => {
     const typeDecl = a.getTypeNode();
     if (!typeDecl) {
       throw new LintError(
-        `The ${a.getName()} parameter for the function definition at ${objectPath} must have a type definition.`,
+        `The ${bold(
+          a.getName()
+        )} parameter for the function definition at ${bold(objectPath)} must have a type definition.`,
         a
       );
     }
   });
   if (!comment) {
     throw new LintError(
-      `Missing translation description comment for the function definition at ${objectPath}.`,
+      `Missing translation description comment for the function definition at ${bold(objectPath)}.`,
       propertyAssignment
     );
   }
@@ -258,17 +284,17 @@ const parseMessageStringDefinitionProperty = (
   parentPath: string,
   key: string
 ): StringMessageDefinition => {
-  const objectPath = getObjectPath(parentPath, key)
+  const objectPath = getObjectPath(parentPath, key);
   const comment = getStrippedNodeComment(propertyAssignment);
   if (stringLiteral.compilerNode.text.trim().length === 0) {
     throw new LintError(
-      `Invalid string message definition for the string definition at ${objectPath}. The string cannot be empty.`,
+      `Invalid string message definition for the string definition at ${bold(objectPath)}. The string cannot be empty.`,
       stringLiteral
     );
   }
   if (!comment) {
     throw new LintError(
-      `Missing translation description comment for the string definition at ${objectPath}.`,
+      `Missing translation description comment for the string definition at ${bold(objectPath)}.`,
       propertyAssignment
     );
   }
@@ -282,5 +308,5 @@ const parseMessageStringDefinitionProperty = (
 };
 
 const getObjectPath = (parentPath: string, key: string) => {
-  return [parentPath, key].filter(s => s.length > 0).join('.')
-}
+  return [parentPath, key].filter((s) => s.length > 0).join('.');
+};

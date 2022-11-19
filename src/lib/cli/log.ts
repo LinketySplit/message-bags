@@ -1,50 +1,65 @@
-import type { MapProp, MessageBagProp, ParsedCallExpression, ParsedMessageBag } from './types';
-import kleurPkg from 'kleur';
+import type { MapProp, MessageBagProp, ParseMessageBagsResult } from './types';
 import { NodeDetails } from './classes.js';
 import { SyntaxKind } from 'ts-morph';
-const { bold, underline, red, green, dim } = kleurPkg;
+import { bold, underline, red, green, dim } from './kleur.js';
 
-export const logParsedCallExpressions = (
-  parsedCallExpressions: ParsedCallExpression[]
-) => {
-  parsedCallExpressions.forEach((call) => {
-    const callDetails = new NodeDetails(call.callExpression);
+export const logMessageBags = (result: ParseMessageBagsResult) => {
+  const indent = '  ';
+  const error = red('✗ ');
+  const valid = green('✓ ');
+
+  const logProp = (m: MessageBagProp, currIndent: string) => {
+    const currKey = m.objectPath.split('.').pop();
+    const currTextLines = m.value
+      .getText()
+      .split('\n')
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+    const currLine =
+      currTextLines[0] + (currTextLines.length > 1 ? dim('...') : '');
+    if (m.value.getKind() === SyntaxKind.ObjectLiteralExpression) {
+      console.log(`${currIndent}${currKey}:`);
+      (m as MapProp).properties.forEach((p) => logProp(p, currIndent + indent));
+    } else {
+      console.log(
+        `${currIndent}${currKey}: ${dim(m.value.getKindName())} ${currLine}`
+      );
+    }
+  };
+
+  const invalidCount = result.messageBags.filter(
+    (b) => b.error !== null
+  ).length;
+  const validCount = result.messageBags.length - invalidCount;
+  console.log(dim(`${result.messageBags.length} message bags found.`));
+
+  result.messageBags.forEach((bag) => {
+    const callDetails = new NodeDetails(bag.callExpression);
     const { shortFileName, posString } = callDetails;
-    if (call.error) {
-      console.log(red('✗'), underline(shortFileName), dim(posString));
+    console.log(
+      `${bag.error ? error : valid}${underline(shortFileName)} ${dim(
+        posString
+      )}`
+    );
+    if (bag.error) {
       console.log(
         red(' '),
-        bold(red(`Error ${call.error.posString}:`)),
-        call.error.message
+        bold(red(`Error ${bag.error.posString}:`)),
+        bag.error.message
       );
-    } else {
-      console.log(green('✓'), underline(shortFileName), dim(posString));
     }
   });
-};
-export const logMessageBags = (messageBags: ParsedMessageBag[]) => {
-  const logProp = (m: MessageBagProp, indent: string) => {
-    const currKey = m.objectPath.split('.').pop();
-    const currTextLines = m.value.getText().split('\n').map(s => s.trim()).filter(s => s.length > 0);
-    const currLine = currTextLines[0] + (currTextLines.length > 1 ? dim('...') : '')
-    if (m.value.getKind() === SyntaxKind.ObjectLiteralExpression) {
-      console.log(`${indent}${currKey}:`);
-      (m as MapProp).properties.forEach(p => logProp(p, indent + '  '))
-    } else {
-      console.log(`${indent}${currKey}: ${dim(m.value.getKindName())} ${currLine}`);
-    }
-   
+
+  if (validCount > 0) {
+    console.log(`${green(validCount)} valid message bags.`);
+    result.messageBags
+      .filter((b) => b.error === null)
+      .forEach((bag) => {
+        console.log('-'.repeat(25));
+        console.log(`Message Bag Id: ${bag.messageBagId}`);
+        console.log(`Version Hash: ${bag.versionHash}`);
+        console.log(`Properties:`);
+        
+      });
   }
-  console.log();
-  console.log(dim(`${messageBags.length} message bags found.`));
-  console.log('---------------------');
-  messageBags.forEach((bag) => {
-    console.log(`Id: ${bag.messageBagId}`);
-    console.log(`Version Hash: ${bag.versionHash}`);
-    
-    bag.properties.forEach((def) => {
-      logProp(def, '  ')
-    });
-    console.log('---------------------');
-  });
 };
