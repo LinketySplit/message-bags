@@ -1,9 +1,9 @@
-import type { MapProp, MessageBagProp, ParseMessageBagsResult } from './types';
+import type { MapProp, MessageBagProp, ParsedMessageBag } from './types';
 import { NodeDetails } from './classes.js';
 import { SyntaxKind } from 'ts-morph';
 import { bold, underline, red, green, dim } from './kleur.js';
 
-export const logMessageBags = (result: ParseMessageBagsResult) => {
+export const logMessageBags = (messageBags: ParsedMessageBag[]) => {
   const indent = '  ';
   const error = red('✗ ');
   const valid = green('✓ ');
@@ -27,13 +27,13 @@ export const logMessageBags = (result: ParseMessageBagsResult) => {
     }
   };
 
-  const invalidCount = result.messageBags.filter(
+  const invalidCount = messageBags.filter(
     (b) => b.error !== null
   ).length;
-  const validCount = result.messageBags.length - invalidCount;
-  console.log(dim(`${result.messageBags.length} message bags found.`));
+  const validCount = messageBags.length - invalidCount;
+  console.log(dim(`${messageBags.length} message bags found.`));
 
-  result.messageBags.forEach((bag) => {
+  messageBags.forEach((bag) => {
     const callDetails = new NodeDetails(bag.callExpression);
     const { shortFileName, posString } = callDetails;
     console.log(
@@ -52,14 +52,18 @@ export const logMessageBags = (result: ParseMessageBagsResult) => {
 
   if (validCount > 0) {
     console.log(`${green(validCount)} valid message bags.`);
-    result.messageBags
+    messageBags
       .filter((b) => b.error === null)
       .forEach((bag) => {
         console.log('-'.repeat(25));
         console.log(`Message Bag Id: ${bag.messageBagId}`);
         console.log(`Version Hash: ${bag.versionHash}`);
-        console.log(`Properties:`);
-        
+        console.log(`Messages:`);
+        bag.properties.forEach((def) => {
+          logProp(def, indent)
+        });
       });
   }
 };
+
+

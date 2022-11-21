@@ -1,6 +1,7 @@
 import type {
   ArrowFunction,
   CallExpression,
+  Expression,
   Node,
   ObjectLiteralExpression,
   PropertyAssignment,
@@ -8,7 +9,14 @@ import type {
 } from 'ts-morph';
 import type { LintError } from './classes.js';
 
-
+export type ParseResult = {
+  messageBags: ParsedMessageBag[];
+  validMessageBags: ParsedMessageBag[]
+  i18nMessageBags: ParsedI18NMessageBagResult[];
+  locales: string[];
+  buildable: boolean;
+  unusedI18NDirs: string[];
+};
 
 export type MessageBagProp<T extends Node = Node> = {
   key: string;
@@ -31,12 +39,32 @@ export type ParsedMessageBag = {
   error: LintError | null;
 };
 
-export type ParseMessageBagsResult = {
-  valid: boolean;
-  messageBags: ParsedMessageBag[];
+export type ParsedMessageBagTypeFile = {
+  messageBagId: string;
+  filePath: string;
+  fileExists: boolean;
+  declarationError: LintError | null;
+}
+
+export type ParsedI18NMessageBagResult = {
+
+  messageBagId: string;
+
+  locales: ParsedI18NMessageBagLocaleResult[];
 };
 
-export type ParseI18NResult = {
-  locales: string[];
-  existingMessageBagIds: string[];
-}
+export type ParsedI18NMessageBagLocaleResult = {
+  locale: string;
+  messageBagId: string;
+  filePath: string;
+  fileExists: boolean;
+  declarationError: LintError | null;
+  missingMessages: LintError[];
+  deprecatedMessages: LintError[];
+  invalidMessages: LintError[];
+};
+
+export type FlattenedProp = {
+  objectPath: string;
+  initializer: Expression;
+};

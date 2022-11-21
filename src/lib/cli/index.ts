@@ -3,9 +3,9 @@
 import sade from 'sade';
 import { getTsProject } from './get-ts-project.js';
 import { logMessageBags } from './log.js';
-import { parseMessageBags } from './parse-message-bags.js';
-import { parseI18N } from './parse-i18n.js';
-import { bold, underline, red, green, dim } from './kleur.js';
+import { parseProject } from './parse.js';
+import { write } from './write.js';
+import { red, dim } from './kleur.js';
 export const main = () => {
   const localeOption = '--locale -l';
   const localeOptionDesc =
@@ -15,6 +15,18 @@ export const main = () => {
   const prog = sade('skint').version(`0.0.1`);
 
   prog
+    .command('lint')
+    .option(localeOption, localeOptionDesc)
+    .action((options) => {
+      const project = getTsProject();
+      const ensuredLocales = options.locale || [];
+      const result = parseProject(project, ensuredLocales);
+      
+      
+      
+    });
+
+  prog
     .command('build')
     .option(localeOption, localeOptionDesc)
     .example('build')
@@ -22,23 +34,7 @@ export const main = () => {
     .example('build -l en_US -l es_MX')
     .describe(`Build the project's translation files.`)
     .action(async (options) => {
-      const ensuredLocales = options.locale || [];
-      const project = getTsProject();
-      console.log(dim('Parsing call expressions...'));
-      const { messageBags, valid } = parseMessageBags(project);
-      
-      logMessageBags({ messageBags, valid });
-      if (!valid) {
-        console.log(red('Build cancelled. Please correct the errors.'));
-        return;
-      }
-      // const parseI18NResult = parseI18N(
-      //   project,
-      //   parsedMessageBags,
-      //   ensuredLocales
-      // );
-
-      //console.log(parseI18NResult.locales);
+      //
     });
   prog.parse(process.argv);
 };
