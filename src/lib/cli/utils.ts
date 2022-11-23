@@ -1,15 +1,7 @@
-import {
-  Expression,
-  SyntaxKind,
-  type Node,
-  type ObjectLiteralExpression
-} from 'ts-morph';
+
 import prettier from 'prettier';
-import type {
-  FlattenedProp,
-  MapProp,
-  MessageBagProp,
-} from './types';
+import type { Node } from 'ts-morph';
+
 
 export const getStrippedNodeComment = (node: Node): string | null => {
   const stripComment = (input: string): string => {
@@ -48,51 +40,30 @@ export const getStrippedNodeComment = (node: Node): string | null => {
   return stripped.trim().length === 0 ? null : stripped;
 };
 
-export const prettify = async (
-  source: string,
-  filePath: string
-): Promise<string> => {
+export const encloseComment = (lines: string[]): string => {
+  return [
+    '',
+    '/**',
+    ...lines.map(s => ` *${s}`),
+    ' */',
+    ''
+  ].join('\n')
+}
+
+export type PrettierOptions = prettier.Options;
+
+export const getPretterOptions = async (): Promise<PrettierOptions> => {
   const options = (await prettier.resolveConfig(process.cwd())) || {};
+  return options
+}
+export const prettify = (
+  source: string,
+  filePath: string,
+  options: PrettierOptions
+): string => {
   options.filepath = filePath;
   return prettier.format(source, options);
 };
 
-export const flattenMessageBag = (
-  props: MessageBagProp[]
-): FlattenedProp[] => {
-  const flattened: FlattenedProp[] = [];
-  props.forEach((p) => {
-    flattened.push({
-      objectPath: p.objectPath,
-      initializer: p.value as Expression
-    });
-    if ((p as MapProp).properties) {
-      flattened.push(...flattenMessageBag((p as MapProp).properties));
-    }
-  });
-  return flattened;
-};
 
-export const flattenObjectLiteral = (
-  ol: ObjectLiteralExpression,
-  parentPath: string
-): FlattenedProp[] => {
-  const flattened: FlattenedProp[] = [];
-  ol.getChildrenOfKind(SyntaxKind.PropertyAssignment).forEach((pa) => {
-    const name = pa.getName();
-    const objectPath = [parentPath, name].filter((s) => s.length > 0).join('.');
-    const initializer = pa.getInitializer();
-    if (initializer) {
-      flattened.push({ objectPath, initializer });
-      if (initializer.getKind() === SyntaxKind.ObjectLiteralExpression) {
-        flattened.push(
-          ...flattenObjectLiteral(
-            initializer as ObjectLiteralExpression,
-            objectPath
-          )
-        );
-      }
-    }
-  });
-  return flattened;
-};
+

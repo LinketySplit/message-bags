@@ -29,10 +29,12 @@ export class NodeDetails<T extends Node = Node> {
 }
 
 export class LintError extends NodeDetails {
+ 
   constructor(private _message: string, node: Node) {
-    super(node);
+    super(node)
   }
   get message(): string {
     return this._message;
   }
+ 
 }

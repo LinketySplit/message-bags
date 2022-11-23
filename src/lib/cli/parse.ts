@@ -1,8 +1,6 @@
 import {
   Identifier,
-  Node,
   Project,
-  SourceFile,
   SyntaxKind,
   type ArrowFunction,
   type CallExpression,
@@ -14,8 +12,6 @@ import {
 import { Md5 } from 'ts-md5';
 import { LintError, NodeDetails } from './classes.js';
 import {
-  flattenMessageBag,
-  flattenObjectLiteral,
   getStrippedNodeComment
 } from './utils.js';
 import type {
@@ -24,39 +20,14 @@ import type {
   MapProp,
   FunctionMessageDefinition,
   StringMessageDefinition,
-  ParsedI18NMessageBagResult,
-  ParsedI18NMessageBagLocaleResult,
-  FlattenedProp,
-  ParseResult
 } from './types.js';
 import { PATH_TO_I18N, TRANSLATIONS_FILE_NAME } from './constants.js';
 import { bold } from './kleur.js';
-import { extname, basename, join, relative, dirname } from 'node:path';
+import { extname, basename } from 'node:path';
 
-export const parseProject = (
-  project: Project,
-  ensuredLocales: string | string[]
-): ParseResult => {
-  const messageBags = parseMessageBags(project);
-  const validMessageBags = messageBags.filter((b) => b.error === null);
-  const locales = parseLocales(project, ensuredLocales);
-  const i18nMessageBags = parseI18NMessageBags(
-    project,
-    validMessageBags,
-    locales
-  );
-  const unusedI18NDirs = getUnusedI18NMessageBagDirs(project, messageBags)
-  return {
-    messageBags,
-    validMessageBags,
-    i18nMessageBags,
-    locales,
-    buildable: validMessageBags.length === messageBags.length,
-    unusedI18NDirs
-  };
-};
 
-const parseMessageBags = (project: Project): ParsedMessageBag[] => {
+
+export const parseMessageBags = (project: Project): ParsedMessageBag[] => {
   const messageBags: ParsedMessageBag[] = project
     .getSourceFiles('src/**/*.ts')
     .filter((f) => {
@@ -340,7 +311,7 @@ const getObjectPath = (parentPath: string, key: string) => {
   return [parentPath, key].filter((s) => s.length > 0).join('.');
 };
 
-const parseLocales = (
+export const parseLocales = (
   project: Project,
   ensuredLocales: string | string[]
 ): string[] => {
@@ -364,273 +335,4 @@ const parseLocales = (
   );
 };
 
-const parseI18NMessageBags = (
-  project: Project,
-  validMessageBags: ParsedMessageBag[],
-  locales: string[]
-): ParsedI18NMessageBagResult[] => {
-  return validMessageBags.map((b) => parseI18NMessageBag(project, b, locales));
-};
 
-const parseI18NMessageBag = (
-  project: Project,
-  messageBag: ParsedMessageBag,
-  locales: string[]
-): ParsedI18NMessageBagResult => {
-  return {
-    messageBagId: messageBag.messageBagId,
-    locales: locales.map((l) =>
-      parseI18NMessageBagLocale(project, messageBag, l)
-    )
-  };
-};
-
-const parseI18NMessageBagLocale = (
-  project: Project,
-  messageBag: ParsedMessageBag,
-  locale: string
-): ParsedI18NMessageBagLocaleResult => {
-  const filePath = join(
-    process.cwd(),
-    PATH_TO_I18N,
-    messageBag.messageBagId,
-    `${TRANSLATIONS_FILE_NAME}.${locale}.ts`
-  );
-  const result: ParsedI18NMessageBagLocaleResult = {
-    messageBagId: messageBag.messageBagId,
-    locale,
-    filePath: relative(process.cwd(), filePath),
-    fileExists: false,
-    declarationError: null,
-    missingMessages: [],
-    deprecatedMessages: [],
-    invalidMessages: []
-  };
-  const file = project.getSourceFile(filePath);
-  if (!file) {
-    return result;
-  }
-  result.fileExists = true;
-  let ole: ObjectLiteralExpression;
-  try {
-    ole = validateTranslationsFileBasics(file);
-  } catch (error) {
-    if (error instanceof LintError) {
-      result.declarationError = error;
-      return result;
-    } else {
-      throw error;
-    }
-  }
-
-  const flattenedMessageBagProps = flattenMessageBag(messageBag.properties);
-  const flattenedOleProps = flattenObjectLiteral(ole, '');
-  const groups: {
-    ol: FlattenedProp | undefined;
-    mb: FlattenedProp | undefined;
-    objectPath: string;
-  }[] = Array.from(
-    new Set([...flattenedMessageBagProps.map((p) => p.objectPath)])
-  ).map((objectPath) => {
-    return {
-      objectPath,
-      ol: flattenedOleProps.find((p) => p.objectPath === objectPath),
-      mb: flattenedMessageBagProps.find((p) => p.objectPath === objectPath)
-    };
-  });
-  // console.log(groups)
-  result.deprecatedMessages = groups
-    .filter((g) => g.mb === undefined && g.ol !== undefined)
-    .map((g) => {
-      const defType =
-        (g.ol as FlattenedProp).initializer.getKind() ===
-        SyntaxKind.ObjectLiteralExpression
-          ? 'message group'
-          : 'message definition';
-      return new LintError(
-        `Deprecated ${defType} ${bold(g.objectPath)}.`,
-        (g.ol as FlattenedProp).initializer.getParent() as Node
-      );
-    });
-  result.missingMessages = groups
-    .filter((g) => g.mb !== undefined && g.ol === undefined)
-    .map((g) => {
-      const defType =
-        (g.mb as FlattenedProp).initializer.getKind() ===
-        SyntaxKind.ObjectLiteralExpression
-          ? 'message group'
-          : 'message definition';
-      return new LintError(`Missing ${defType} ${bold(g.objectPath)}.`, ole);
-    });
-
-  result.invalidMessages = groups
-    .filter((g) => g.mb !== undefined && g.ol !== undefined)
-    .map((g) => {
-      const oleProp = g.ol as FlattenedProp;
-      const mbProp = g.mb as FlattenedProp;
-      switch (mbProp.initializer.getKind()) {
-        case SyntaxKind.ObjectLiteralExpression:
-        case SyntaxKind.ArrowFunction:
-          if (oleProp.initializer.getKind() !== mbProp.initializer.getKind()) {
-            return new LintError(
-              `Invalid message definition. Expected: ${mbProp.initializer.getKind()}. Got: ${oleProp.initializer.getKind()}.`,
-              oleProp.initializer
-            );
-          }
-          break;
-        case SyntaxKind.StringLiteral:
-          if (
-            oleProp.initializer.getKind() !== mbProp.initializer.getKind() &&
-            oleProp.initializer.getType().getText() !== 'string'
-          ) {
-            return new LintError(
-              `Invalid message definition. Expected: string. Got: ${oleProp.initializer.getKind()}.`,
-              oleProp.initializer
-            );
-          }
-          break;
-      }
-      if (mbProp.initializer.getKind() === SyntaxKind.ArrowFunction) {
-        const mbArrowFunction = mbProp.initializer as ArrowFunction;
-        const olArrowFunction = oleProp.initializer as ArrowFunction;
-        if (!olArrowFunction.getReturnType().isString()) {
-          return new LintError(
-            `Invalid message definition. The function must return a string.`,
-            olArrowFunction
-          );
-        }
-
-        const mbParams = mbArrowFunction.getParameters();
-        const olParams = olArrowFunction.getParameters();
-        for (let i = 0; i < mbParams.length; i++) {
-          const mbParam = mbParams[i];
-          const olParam = olParams[i];
-          if (!olParam) {
-            return new LintError(
-              `Invalid message definition. Missing parameter ${bold(
-                mbParam.getName()
-              )}.`,
-              olArrowFunction
-            );
-          }
-          if (mbParam.getType().getText() !== olParam.getType().getText()) {
-            return new LintError(
-              `Invalid message definition. ` +
-                `Parameter ${bold(mbParam.getName())} is typed as ${olParam
-                  .getType()
-                  .getText()}. ` +
-                `It should be typed as ${mbParam.getType().getText()}`,
-              olParam
-            );
-          }
-        }
-        if (
-          mbArrowFunction.getParameters().length !==
-          olArrowFunction.getParameters().length
-        ) {
-          return new LintError(
-            `Invalid message definition. More parameters than defined.`,
-            olArrowFunction
-          );
-        }
-      }
-      return null;
-    })
-    .filter((e) => e instanceof LintError) as LintError[];
-
-  return result;
-};
-
-/**
- * Validate that:
- *  - the type is imported from './type'
- *  - "messages" is declared, and...
- *     - it's a constant
- *     - it's exported
- *     - it's properly typed
- *     - it's initialized with an object literal
- * @param file
- * @throws LintError
- */
-const validateTranslationsFileBasics = (
-  file: SourceFile
-): ObjectLiteralExpression => {
-  const importDeclValid = `import type { Messages } from './type';`;
-  const importDecl = file.getImportDeclaration('./type');
-  if (!importDecl) {
-    throw new LintError(
-      `Missing type import. Should be ${importDeclValid}`,
-      file
-    );
-  }
-  if (
-    importDecl.getNamedImports().filter((ni) => ni.getName() === 'Messages')
-      .length === 0
-  ) {
-    throw new LintError(
-      `Invalid type import.  Should be ${importDeclValid}`,
-      importDecl
-    );
-  }
-  if (!importDecl.isTypeOnly()) {
-    throw new LintError(
-      `Invalid type import.  Should be ${importDeclValid}`,
-      importDecl
-    );
-  }
-  const constDecl = file.getVariableDeclaration('messages');
-  if (!constDecl) {
-    throw new LintError(`Missing export const messages declaration.`, file);
-  }
-  if (!constDecl.isNamedExport()) {
-    throw new LintError(
-      `The messages const must be a named export.`,
-      constDecl
-    );
-  }
-  const typeRef = constDecl.getFirstDescendantByKind(SyntaxKind.TypeReference);
-  if (!typeRef) {
-    throw new LintError(
-      `The messages const must be typed as Messages.`,
-      constDecl
-    );
-  }
-  if (typeRef.getText() !== 'Messages') {
-    throw new LintError(
-      `The messages const must be typed as Messages.`,
-      constDecl
-    );
-  }
-  const initializer = constDecl.getInitializer();
-  if (
-    !initializer ||
-    SyntaxKind.ObjectLiteralExpression !== initializer.getKind()
-  ) {
-    throw new LintError(
-      `The messages const must be initialized with an object literal.`,
-      constDecl
-    );
-  }
-  return initializer as ObjectLiteralExpression;
-};
-
-const getUnusedI18NMessageBagDirs = (
-  project: Project,
-  messageBags: ParsedMessageBag[]
-): string[] => {
-  const ids: string[] = messageBags
-    .map((b) => b.messageBagId || null)
-    .filter((s) => s !== null) as string[];
-  return Array.from(
-    new Set(
-      project
-        .getSourceFiles(`${PATH_TO_I18N}/**/*.ts`)
-        .map((f) => f.getFilePath())
-        .map((f) => dirname(f))
-        .map((f) => relative(join(process.cwd(), PATH_TO_I18N), f))
-        .filter((f) => {
-          return ids.filter((id) => id.startsWith(f)).length === 0;
-        })
-    )
-  ).map(s => `${PATH_TO_I18N}/${s}`)
-};

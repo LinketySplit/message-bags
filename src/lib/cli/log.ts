@@ -1,4 +1,9 @@
-import type { MapProp, MessageBagProp, ParsedMessageBag } from './types';
+import type {
+  MapProp,
+  MessageBagBuildResult,
+  MessageBagProp,
+  ParsedMessageBag
+} from './types';
 import { NodeDetails } from './classes.js';
 import { SyntaxKind } from 'ts-morph';
 import { bold, underline, red, green, dim } from './kleur.js';
@@ -27,9 +32,7 @@ export const logMessageBags = (messageBags: ParsedMessageBag[]) => {
     }
   };
 
-  const invalidCount = messageBags.filter(
-    (b) => b.error !== null
-  ).length;
+  const invalidCount = messageBags.filter((b) => b.error !== null).length;
   const validCount = messageBags.length - invalidCount;
   console.log(dim(`${messageBags.length} message bags found.`));
 
@@ -51,6 +54,7 @@ export const logMessageBags = (messageBags: ParsedMessageBag[]) => {
   });
 
   if (validCount > 0) {
+    console.log();
     console.log(`${green(validCount)} valid message bags.`);
     messageBags
       .filter((b) => b.error === null)
@@ -60,10 +64,40 @@ export const logMessageBags = (messageBags: ParsedMessageBag[]) => {
         console.log(`Version Hash: ${bag.versionHash}`);
         console.log(`Messages:`);
         bag.properties.forEach((def) => {
-          logProp(def, indent)
+          logProp(def, indent);
         });
       });
   }
 };
 
+export const logBuildResults = (results: MessageBagBuildResult[]) => {
+  const indent = '  ';
+  const error = red('✗ ');
+  const valid = green('✓ ');
+  console.log();
+  console.log(`${results.length} built message bags.`);
+  results.forEach((r) => {
+    console.log('-'.repeat(25));
+    console.log(bold('Message Bag Id:'), r.messageBagId);
+    console.log(bold('Locales:'), r.locales.length);
+    r.locales.forEach((l) => {
+      console.log(`${indent}Locale: ${l.locale}`);
+      const errors = [
+        ...l.deprecatedProperties,
+        ...l.invalidProperties,
+        ...l.missingProperties,
+        ...(l.invalidFileError ? [l.invalidFileError] : [])
+      ].sort((a, b) => a.pos.line - b.pos.line);
 
+      console.log(
+        `${indent}${errors.length > 0 ? error : valid}${underline(l.filePath)}`
+      );
+      if (errors.length > 0) {
+        console.log(dim(`${indent}${errors.length} error(s) found`));
+        errors.forEach((e) => {
+          console.log(`${indent}${red(e.message)} ${dim(e.posString)}`);
+        });
+      }
+    });
+  });
+};
