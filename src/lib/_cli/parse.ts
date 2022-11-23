@@ -22,7 +22,8 @@ import type {
 import {
   PATH_TO_I18N,
   TRANSLATIONS_FILE_NAME,
-  FUNCTION_NAME
+  FUNCTION_NAME,
+  PACKAGE_NAME
 } from './constants.js';
 import { bold } from './kleur.js';
 import { extname, basename } from 'node:path';
@@ -34,7 +35,7 @@ export const parseMessageBags = (project: Project): ParsedMessageBag[] => {
       return !f.getFilePath().startsWith(process.cwd() + `/${PATH_TO_I18N}`);
     })
     .map((file): CallExpression[] => {
-      const importDec = file.getImportDeclaration('skint');
+      const importDec = file.getImportDeclaration(PACKAGE_NAME);
       if (!importDec) {
         return [];
       }
