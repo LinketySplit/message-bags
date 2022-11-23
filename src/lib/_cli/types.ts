@@ -8,8 +8,6 @@ import type {
 } from 'ts-morph';
 import type { LintError } from './classes.js';
 
-
-
 export type MessageBagProp<T extends Node = Node> = {
   key: string;
   objectPath: string;

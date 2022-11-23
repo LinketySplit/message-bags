@@ -198,23 +198,25 @@ const buildMessageBagLocaleFile = async (
   const existingObjectIds = flattenMessageBag(messageBag.properties).map(
     (o) => o.objectPath
   );
-  
+
   flattenObjectLiteral(rootObjectLiteral, '').forEach((op) => {
     if (!existingObjectIds.includes(op.objectPath)) {
       if (op.initializer.getKind() === SyntaxKind.ObjectLiteralExpression) {
         return;
       }
       const replacingNode = op.propertyAssignment.replaceWithText(
-        encloseComment([` Undefined or deprecated message definition "${op.objectPath}".`]) +
-          op.propertyAssignment.getText()
+        encloseComment([
+          ` Undefined or deprecated message definition "${op.objectPath}".`
+        ]) + op.propertyAssignment.getText()
       );
       if (replacingNode.getKind() === SyntaxKind.PropertyAssignment) {
         op.propertyAssignment = replacingNode as PropertyAssignment;
       } else {
-        op.propertyAssignment = replacingNode.getFirstChildByKindOrThrow(SyntaxKind.PropertyAssignment)
+        op.propertyAssignment = replacingNode.getFirstChildByKindOrThrow(
+          SyntaxKind.PropertyAssignment
+        );
       }
-      op.initializer = op.propertyAssignment.getInitializerOrThrow()
-      
+      op.initializer = op.propertyAssignment.getInitializerOrThrow();
     }
   });
 
@@ -342,7 +344,9 @@ const buildMessageBagLocaleFile = async (
     if (!mbProp) {
       result.deprecatedProperties.push(
         new LintError(
-          `Undefined or deprecated message definition ${bold(olProp.objectPath)}.`,
+          `Undefined or deprecated message definition ${bold(
+            olProp.objectPath
+          )}.`,
           olProp.propertyAssignment
         )
       );

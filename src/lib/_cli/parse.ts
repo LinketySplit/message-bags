@@ -11,21 +11,21 @@ import {
 } from 'ts-morph';
 import { Md5 } from 'ts-md5';
 import { LintError, NodeDetails } from './classes.js';
-import {
-  getStrippedNodeComment
-} from './utils.js';
+import { getStrippedNodeComment } from './utils.js';
 import type {
   ParsedMessageBag,
   MessageBagProp,
   MapProp,
   FunctionMessageDefinition,
-  StringMessageDefinition,
+  StringMessageDefinition
 } from './types.js';
-import { PATH_TO_I18N, TRANSLATIONS_FILE_NAME, FUNCTION_NAME } from './constants.js';
+import {
+  PATH_TO_I18N,
+  TRANSLATIONS_FILE_NAME,
+  FUNCTION_NAME
+} from './constants.js';
 import { bold } from './kleur.js';
 import { extname, basename } from 'node:path';
-
-
 
 export const parseMessageBags = (project: Project): ParsedMessageBag[] => {
   const messageBags: ParsedMessageBag[] = project
@@ -334,5 +334,3 @@ export const parseLocales = (
     ])
   );
 };
-
-

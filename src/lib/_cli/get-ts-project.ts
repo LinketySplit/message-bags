@@ -1,4 +1,4 @@
-import  { Project } from "ts-morph";
+import { Project } from 'ts-morph';
 
 export const getTsProject = (): Project => {
   const project = new Project({
@@ -6,5 +6,3 @@ export const getTsProject = (): Project => {
   });
   return project;
 };
-
-

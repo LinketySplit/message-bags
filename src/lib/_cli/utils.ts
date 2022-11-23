@@ -1,7 +1,5 @@
-
 import prettier from 'prettier';
 import type { Node } from 'ts-morph';
-
 
 export const getStrippedNodeComment = (node: Node): string | null => {
   const stripComment = (input: string): string => {
@@ -41,21 +39,15 @@ export const getStrippedNodeComment = (node: Node): string | null => {
 };
 
 export const encloseComment = (lines: string[]): string => {
-  return [
-    '',
-    '/**',
-    ...lines.map(s => ` *${s}`),
-    ' */',
-    ''
-  ].join('\n')
-}
+  return ['', '/**', ...lines.map((s) => ` *${s}`), ' */', ''].join('\n');
+};
 
 export type PrettierOptions = prettier.Options;
 
 export const getPretterOptions = async (): Promise<PrettierOptions> => {
   const options = (await prettier.resolveConfig(process.cwd())) || {};
-  return options
-}
+  return options;
+};
 export const prettify = (
   source: string,
   filePath: string,
@@ -64,6 +56,3 @@ export const prettify = (
   options.filepath = filePath;
   return prettier.format(source, options);
 };
-
-
-
