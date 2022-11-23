@@ -6,7 +6,7 @@ const moduleLoadFns: Record<string, () => Promise<Record<string, unknown>>> =
   }) as Record<string, () => Promise<Record<string, unknown>>>;
 const loadedMessageBags: Record<string, Record<string, unknown>> = {};
 
-export const t = <T extends MessageBag>(
+export const defineMessageBag = <T extends MessageBag>(
   messageBagId: string,
   messageBag: T
 ): ((locale?: string) => Promise<T>) => {

@@ -21,7 +21,7 @@ import type {
   FunctionMessageDefinition,
   StringMessageDefinition,
 } from './types.js';
-import { PATH_TO_I18N, TRANSLATIONS_FILE_NAME } from './constants.js';
+import { PATH_TO_I18N, TRANSLATIONS_FILE_NAME, FUNCTION_NAME } from './constants.js';
 import { bold } from './kleur.js';
 import { extname, basename } from 'node:path';
 
@@ -41,7 +41,7 @@ export const parseMessageBags = (project: Project): ParsedMessageBag[] => {
       const ids = importDec
         .getNamedImports()
         .filter((n) => {
-          return n.getNameNode().getText() === 't';
+          return n.getNameNode().getText() === FUNCTION_NAME;
         })
         .map((s) => {
           return s.getAliasNode() ? s.getAliasNode() : s.getNameNode();
