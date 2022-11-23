@@ -1,6 +1,6 @@
 {
   "name": "@linketysplit/message-bags",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "bin": "./_cli/index.js",
   "scripts": {
     "dev": "vite dev",
