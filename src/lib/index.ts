@@ -53,7 +53,6 @@ export const defineMessageBag = <T extends MessageBag>(
     if (!loadedMessageBags[path]) {
       loadedMessageBags[path] = await moduleLoadFns[path]();
     }
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return mergeDeep((loadedMessageBags[path] || {}) as any, messageBag)
   };
   return promise;

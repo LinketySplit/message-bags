@@ -6,16 +6,19 @@ import { logBuildResults, logMessageBags } from './log.js';
 import { parseMessageBags, parseLocales } from './parse.js';
 import { build } from './build.js';
 import { dim, bold } from './kleur.js';
+import { isDevelopingThisPackage } from './utils.js';
 
 const mainAction = async (
   ensuredLocales: string | string[],
   lintOnly: boolean
 ) => {
   const start = Date.now();
+  const isDev = await isDevelopingThisPackage();
+  console.log(isDev)
   console.log(dim('Linting project...'));
   const project = getTsProject();
   const locales = parseLocales(project, ensuredLocales);
-  const messageBags = parseMessageBags(project);
+  const messageBags = parseMessageBags(project, isDev);
   logMessageBags(messageBags);
   const valid = messageBags.filter((b) => b.error === null);
   let isDryRun = lintOnly;

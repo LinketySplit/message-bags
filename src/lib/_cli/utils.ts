@@ -1,5 +1,23 @@
 import prettier from 'prettier';
 import type { Node } from 'ts-morph';
+import { join } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { PACKAGE_NAME } from './constants.js';
+export const isDevelopingThisPackage = async (): Promise<boolean> => {
+  try {
+    const json = await readFile(join(process.cwd(), 'package.json'), 'utf-8');
+    const result = JSON.parse(json);
+    if (
+      Object.prototype.toString.call(result) === '[object Object]' &&
+      result.name === PACKAGE_NAME
+    ) {
+      return true;
+    }
+    return false;
+  } catch (error) {
+    return false;
+  }
+};
 
 export const getStrippedNodeComment = (node: Node): string | null => {
   const stripComment = (input: string): string => {
@@ -38,8 +56,14 @@ export const getStrippedNodeComment = (node: Node): string | null => {
   return stripped.trim().length === 0 ? null : stripped;
 };
 
-export const encloseComment = (lines: string[]): string => {
-  return ['', '/**', ...lines.map((s) => ` *${s}`), ' */', ''].join('\n');
+export const encloseComment = (raw: string): string => {
+  const trimmedLines = raw
+    .split('\n')
+    .map((s) => s.replace(/^\s/, ''))
+    .map((s) => ` ${s}`);
+  return ['', '/**', ...trimmedLines.map((s) => ` *${s}`), ' */', ''].join(
+    '\n'
+  );
 };
 
 export type PrettierOptions = prettier.Options;

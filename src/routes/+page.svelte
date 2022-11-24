@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { PageData} from './$types';
+  export let data: PageData;
 </script>
 
-Start over
+<h1>{data.homePageMessages.welcome}</h1>

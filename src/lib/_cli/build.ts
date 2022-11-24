@@ -7,7 +7,6 @@ import {
   SyntaxKind,
   VariableDeclarationKind,
   type Project,
-  type SourceFile,
   type TypeLiteralNode
 } from 'ts-morph';
 import {
@@ -205,9 +204,9 @@ const buildMessageBagLocaleFile = async (
         return;
       }
       const replacingNode = op.propertyAssignment.replaceWithText(
-        encloseComment([
+        encloseComment(
           ` Undefined or deprecated message definition "${op.objectPath}".`
-        ]) + op.propertyAssignment.getText()
+        ) + op.propertyAssignment.getText()
       );
       if (replacingNode.getKind() === SyntaxKind.PropertyAssignment) {
         op.propertyAssignment = replacingNode as PropertyAssignment;
@@ -364,7 +363,8 @@ const addMessageBagProperty = (
   objectLiteral: ObjectLiteralExpression
 ) => {
   let propertyAssignment: PropertyAssignment;
-  const comment = encloseComment((mbProp.comment || '').split(`\n`));
+  
+  const comment = getCommentForMbProp(mbProp)
   if (!objectLiteral) {
     return;
   }
@@ -409,7 +409,7 @@ const addMessageBagTypeProperty = (
   mbProp: MessageBagProp,
   typeLiteral: TypeLiteralNode
 ) => {
-  const comment = encloseComment((mbProp.comment || '').split(`\n`));
+  const comment =  getCommentForMbProp(mbProp)
   const propertySignature = typeLiteral.addProperty({
     name: mbProp.key,
     leadingTrivia: comment,
@@ -473,3 +473,12 @@ const flattenObjectLiteral = (
   });
   return flattened;
 };
+const getCommentForMbProp = (mbProp: MessageBagProp): string => {
+  let textComment = mbProp.comment || '';
+  if (mbProp.value.getKind() === SyntaxKind.ObjectLiteralExpression) {
+    textComment += `\nMessage Group: "${mbProp.objectPath}"`
+  } else {
+    textComment += `\nMessage: "${mbProp.objectPath}"\n\n Untranslated: \n ${mbProp.value.getText()}`;
+  };
+  return encloseComment(textComment.trim())
+}

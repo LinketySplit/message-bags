@@ -28,14 +28,18 @@ import {
 import { bold } from './kleur.js';
 import { extname, basename } from 'node:path';
 
-export const parseMessageBags = (project: Project): ParsedMessageBag[] => {
+
+
+export const parseMessageBags = (project: Project, isDevelopingThisPackage: boolean): ParsedMessageBag[] => {
+  const glob = isDevelopingThisPackage ? 'src/routes/**/*.ts' : 'src/**/*.ts'
+  const importPkg = isDevelopingThisPackage ? '$lib' : PACKAGE_NAME;
   const messageBags: ParsedMessageBag[] = project
-    .getSourceFiles('src/**/*.ts')
+    .getSourceFiles(glob)
     .filter((f) => {
       return !f.getFilePath().startsWith(process.cwd() + `/${PATH_TO_I18N}`);
     })
     .map((file): CallExpression[] => {
-      const importDec = file.getImportDeclaration(PACKAGE_NAME);
+      const importDec = file.getImportDeclaration(importPkg);
       if (!importDec) {
         return [];
       }
@@ -258,14 +262,6 @@ const parseMessageFunctionDefinitionProperty = (
       );
     }
   });
-  if (!comment) {
-    throw new LintError(
-      `Missing translation description comment for the function definition at ${bold(
-        objectPath
-      )}.`,
-      propertyAssignment
-    );
-  }
   return {
     propertyAssignment,
     value: arrowFunction,
@@ -291,14 +287,7 @@ const parseMessageStringDefinitionProperty = (
       stringLiteral
     );
   }
-  if (!comment) {
-    throw new LintError(
-      `Missing translation description comment for the string definition at ${bold(
-        objectPath
-      )}.`,
-      propertyAssignment
-    );
-  }
+  
   return {
     propertyAssignment,
     value: stringLiteral,
