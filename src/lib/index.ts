@@ -48,7 +48,7 @@ export const loadLocale = async (locale: string) => {
   await Promise.all(promises)
 };
 
-export const defineMessageBag = <T extends MessageBag>(
+export const createMessages = <T extends MessageBag>(
   messageBagId: string,
   messageBag: T,
   locale?: string

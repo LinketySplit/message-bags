@@ -1,6 +1,6 @@
-import { defineMessageBag } from "$lib";
+import { createMessages } from "$lib";
 
-export const homePageMessages = defineMessageBag('home', {
+export const homePageMessages = createMessages('home', {
   /**
    * The welcome message.
    */
@@ -8,7 +8,7 @@ export const homePageMessages = defineMessageBag('home', {
 })
 
 
-export const localePickerMessages = defineMessageBag('locale-picker', {
+export const localePickerMessages = createMessages('locale-picker', {
   /**
    * The prompt to click on one of the locale links, to set the language.
    */
