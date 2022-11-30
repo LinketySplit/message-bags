@@ -14,7 +14,7 @@ export const main = () => {
     'A locale to add (or ensure already exists). ' +
     'You can repeat this flag for multiple locales. ' +
     'Existing locales will always also be included.';
-  const prog = sade('skint').version(`0.0.1`);
+  const prog = sade('message-bags').version(`0.0.10`);
 
   prog
     .command('lint')
