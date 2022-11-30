@@ -1,35 +1,13 @@
 #!/usr/bin/env node
 
+import kleur from 'kleur';
 import sade from 'sade';
-import { getTsProject } from './get-ts-project.js';
-import { logBuildResults, logMessageBags } from './log.js';
-import { parseMessageBags, parseLocales } from './parse.js';
+import { PATH_TO_I18N } from './constants.js';
+import { findLocales } from './find-locales.js';
+import { lintI18n } from './lint-i18n.js';
 import { build } from './build.js';
-import { dim, bold } from './kleur.js';
-import { isDevelopingThisPackage } from './utils.js';
+import { getTsProject } from './utils.js';
 
-const mainAction = async (
-  ensuredLocales: string | string[],
-  lintOnly: boolean
-) => {
-  const start = Date.now();
-  const isDev = await isDevelopingThisPackage();
-  console.log(isDev)
-  console.log(dim('Linting project...'));
-  const project = getTsProject();
-  const locales = parseLocales(project, ensuredLocales);
-  const messageBags = parseMessageBags(project, isDev);
-  logMessageBags(messageBags);
-  const valid = messageBags.filter((b) => b.error === null);
-  let isDryRun = lintOnly;
-  if (valid.length < messageBags.length) {
-    console.log(dim('Invalid message bag definitions found.'));
-    isDryRun = true;
-  }
-  const buildResults = await build(project, valid, locales, isDryRun);
-  logBuildResults(buildResults);
-  console.log(dim(`Done in ${bold((Date.now() - start) / 1000)}s`));
-};
 export const main = () => {
   const localeOption = '--locale -l';
   const localeOptionDesc =
@@ -44,22 +22,41 @@ export const main = () => {
     .example('lint')
     .example('lint --locale en_US --locale es_MX')
     .example('lint -l en_US -l es_MX')
-    .describe(`Lint the project.`)
+    .describe(
+      `Lint the project's current translations in ${kleur.underline(PATH_TO_I18N)}. ` +
+        `For each message bag and locale, it displays the message translations, ` + 
+        `including those that are missing, invalid or deprecated. ` +
+        `Note that the message definitions are read from the ` +
+        `${kleur.underline(`${PATH_TO_I18N}/message/bag/id/type.ts`)} file in each message bag directory, ` + 
+        `not from the ${kleur.bold('current message definitions')} in your source code. ` +
+        `To see changes that would need to be made to translations based on the ${kleur.bold('current message definitions')} ` +
+        `in your source code, run ${kleur.cyan(`skint build --dry-run`)}.`
+    )
     .action(async (options) => {
-      await mainAction(options.locale || [], true);
+      const project = getTsProject();
+      const locales = findLocales(project, options.locale || []);
+      lintI18n(project, locales);
     });
 
   prog
     .command('build')
     .option(localeOption, localeOptionDesc)
+    .option('--dry-run -d', 'Lint the changes that will need to be made to translation files based on the current source code definitions.')
     .example('build')
     .example('build --locale en_US --locale es_MX')
     .example('build -l en_US -l es_MX')
     .describe(
-      `Build/modify translation files based on the defined message bags.`
+      `Build translation files based on the current message definitions in your source code.` + 
+      `For each message bag, updates the type definition in ${kleur.underline(`${PATH_TO_I18N}/message/bag/id/type.ts`)}.` +
+      `Adds missing locale translation files with the untranslated messages.` +
+      `Existing translation files will not be modified -- they need to be updated by hand.` 
+
     )
     .action(async (options) => {
-      await mainAction(options.locale || [], false);
+      const project = getTsProject();
+      const locales = findLocales(project, options.locale || []);
+      const dryRun = options.d === true;
+      await build(project, locales, dryRun)
     });
   prog.parse(process.argv);
 };

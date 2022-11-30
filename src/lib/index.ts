@@ -50,15 +50,15 @@ export const loadLocale = async (locale: string) => {
 
 export const createMessages = <T extends MessageBag>(
   messageBagId: string,
-  messageBag: T,
+  messages: T,
   locale?: string
 ): T => {
   if (!locale) {
-    return messageBag;
+    return messages;
   }
   const path = `/src/i18n/${messageBagId}/${TRANSLATIONS_FILE_NAME}.${locale}.ts`;
   if (isObject(loadedTranslations[path])) {
-    return mergeDeep((loadedTranslations[path]) as Partial<T>, messageBag);
+    return mergeDeep((loadedTranslations[path]) as Partial<T>, messages);
   }
-  return messageBag;
+  return messages;
 };

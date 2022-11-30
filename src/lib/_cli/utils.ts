@@ -1,8 +1,21 @@
+import type { PrettierOptions } from './types.js';
 import prettier from 'prettier';
-import type { Node } from 'ts-morph';
-import { join } from 'node:path';
+import { Node, Project } from 'ts-morph';
 import { readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { PACKAGE_NAME } from './constants.js';
+
+export const getObjectPath = (parentPath: string, key: string) => {
+  return [parentPath, key].filter((s) => s.length > 0).join('.');
+};
+
+export const getTsProject = (): Project => {
+  const project = new Project({
+    tsConfigFilePath: './tsconfig.json'
+  });
+  return project;
+};
+
 export const isDevelopingThisPackage = async (): Promise<boolean> => {
   try {
     const json = await readFile(join(process.cwd(), 'package.json'), 'utf-8');
@@ -65,8 +78,6 @@ export const encloseComment = (raw: string): string => {
     '\n'
   );
 };
-
-export type PrettierOptions = prettier.Options;
 
 export const getPretterOptions = async (): Promise<PrettierOptions> => {
   const options = (await prettier.resolveConfig(process.cwd())) || {};

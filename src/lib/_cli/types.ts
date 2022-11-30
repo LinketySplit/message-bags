@@ -1,46 +1,67 @@
+import type { SourceMapConsumer } from 'source-map';
 import type {
-  ArrowFunction,
-  CallExpression,
   Node,
+  ArrowFunction,
   ObjectLiteralExpression,
   PropertyAssignment,
-  StringLiteral
+  StringLiteral,
+  SyntaxKind,
+  CallExpression
 } from 'ts-morph';
-import type { LintError } from './classes.js';
+import type { LintError } from './classes';
+import type prettier from 'prettier';
 
-export type MessageBagProp<T extends Node = Node> = {
+export type PrettierOptions = prettier.Options;
+
+/** Bespoke Types */
+export type SourceResult = {
+  messageBags: ParsedMessageBag[];
+  sourceValid: boolean;
+};
+
+export type MessageBagNodeDefinition<T extends Node = Node> = {
+  kind:
+    | SyntaxKind.ObjectLiteralExpression
+    | SyntaxKind.StringLiteral
+    | SyntaxKind.ArrowFunction;
   key: string;
   objectPath: string;
   propertyAssignment: PropertyAssignment;
-  value: T;
+  initializer: T;
   comment: string | null;
+  sourceMapConsumer: SourceMapConsumer | undefined;
 };
-export type MapProp = MessageBagProp<ObjectLiteralExpression> & {
-  properties: MessageBagProp[];
-};
-export type StringMessageDefinition = MessageBagProp<StringLiteral>;
-export type FunctionMessageDefinition = MessageBagProp<ArrowFunction>;
+export type MessageBagMapDefinition =
+  MessageBagNodeDefinition<ObjectLiteralExpression> & {
+    kind: SyntaxKind.ObjectLiteralExpression;
+    properties: MessageBagNodeDefinition[];
+  };
 
-export type ParsedMessageBag = {
+export type MessageBagStringDefinition =
+  MessageBagNodeDefinition<StringLiteral> & {
+    kind: SyntaxKind.StringLiteral;
+  };
+export type MessageBagFunctionDefinition =
+  MessageBagNodeDefinition<ArrowFunction> & {
+    kind: SyntaxKind.ArrowFunction;
+  };
+
+export type ParsedCallExpression = {
   callExpression: CallExpression;
-  messageBagId: string;
-  properties: MessageBagProp[];
-  versionHash: string;
+  messageBagId?: string;
+  objectLiteral?: ObjectLiteralExpression;
+  properties: MessageBagNodeDefinition[];
+  sourceMapConsumer: SourceMapConsumer | undefined;
   error: LintError | null;
 };
-
-export type MessageBagBuildResult = {
+export type ValidParsedCallExpression = ParsedCallExpression & {
+  callExpression: CallExpression;
   messageBagId: string;
-  typeFilePath: string;
-  locales: MessageBagLocaleFileBuildResult[];
+  objectLiteral: ObjectLiteralExpression;
+  error: null;
 };
 
-export type MessageBagLocaleFileBuildResult = {
+export type ParsedMessageBag = {
   messageBagId: string;
-  filePath: string;
-  locale: string;
-  invalidFileError: LintError | null;
-  missingProperties: LintError[];
-  invalidProperties: LintError[];
-  deprecatedProperties: LintError[];
+  properties: MessageBagNodeDefinition[];
 };
